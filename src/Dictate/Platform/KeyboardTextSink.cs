@@ -63,7 +63,7 @@ internal sealed class KeyboardTextSink : ITextSink
         return inputs.ToArray();
     }
 
-    private static INPUT Key(ushort vk, char scan, uint flags) => new()
+    private static INPUT Key(ushort vk, ushort scan, uint flags) => new()
     {
         type = INPUT_KEYBOARD,
         u = new InputUnion { ki = new KEYBDINPUT { wVk = vk, wScan = scan, dwFlags = flags } },
