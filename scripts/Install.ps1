@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Installs the Dictate key-test MSIX from a CI build artifact.
+  Installs the Dictate MSIX from a CI build artifact.
 .DESCRIPTION
   Run from the unzipped artifact folder in an elevated PowerShell (needed once to trust the
   signing certificate). Each CI run signs with a fresh throwaway certificate, so re-run this
@@ -25,9 +25,15 @@ foreach ($d in $deps) {
     Add-AppxPackage -Path $d.FullName -ErrorAction SilentlyContinue
 }
 
+# The earlier key-test app also registered as a Copilot key provider; remove it so only Dictate is offered.
+Get-AppxPackage -Name 'Dictate.KeySpike' | ForEach-Object {
+    Write-Host "Removing the old key test app"
+    Remove-AppxPackage -Package $_.PackageFullName
+}
+
 Write-Host "Installing $($msix.Name)"
 Add-AppxPackage -Path $msix.FullName -ForceUpdateFromAnyVersion
 
 Write-Host ""
-Write-Host "Done. Next: Settings > Personalization > Text input > Customize Copilot key > choose 'Dictate'."
-Write-Host "Then open 'Dictate (key test)' from Start and try tap, hold and double tap."
+Write-Host "Done. Open Dictate from Start, paste your xAI API key, then make sure"
+Write-Host "Settings > Personalization > Text input > Customize Copilot key is set to 'Dictate'."

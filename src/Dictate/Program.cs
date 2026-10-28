@@ -3,7 +3,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
 
-namespace Dictate.KeySpike;
+namespace Dictate;
 
 /// <summary>
 /// Custom entry point so that every Copilot key URI launch lands in one running instance

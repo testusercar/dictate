@@ -3,14 +3,15 @@
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap uap3 rescap">
+  IgnorableNamespaces="uap uap3 uap5 rescap">
 
   <!-- Publisher must match the subject of the signing certificate (see scripts/New-DevCert.ps1). -->
-  <Identity Name="Dictate.KeySpike" Publisher="CN=Dictate Dev" Version="0.1.0.0" />
+  <Identity Name="Dictate" Publisher="CN=Dictate Dev" Version="0.1.0.0" />
 
   <Properties>
-    <DisplayName>Dictate (key test)</DisplayName>
+    <DisplayName>Dictate</DisplayName>
     <PublisherDisplayName>Dictate</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -26,8 +27,8 @@
   <Applications>
     <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="Dictate (key test)"
-        Description="Shows the Copilot key events Windows sends to Dictate."
+        DisplayName="Dictate"
+        Description="Hold the Copilot key to dictate into any app."
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
@@ -41,6 +42,11 @@
             <uap:DisplayName>Dictate Copilot key events</uap:DisplayName>
           </uap:Protocol>
         </uap:Extension>
+
+        <!-- Off until the user turns on "Start with Windows" in Dictate's settings. -->
+        <uap5:Extension Category="windows.startupTask">
+          <uap5:StartupTask TaskId="DictateStartup" Enabled="false" DisplayName="Dictate" />
+        </uap5:Extension>
 
         <!-- Makes Dictate selectable in Settings > Personalization > Text input > Customize Copilot key. -->
         <uap3:Extension Category="windows.appExtension">
@@ -62,5 +68,6 @@
 
   <Capabilities>
     <rescap:Capability Name="runFullTrust" />
+    <DeviceCapability Name="microphone" />
   </Capabilities>
 </Package>
