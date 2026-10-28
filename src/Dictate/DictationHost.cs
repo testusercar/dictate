@@ -27,6 +27,7 @@ internal sealed class DictationHost : IDisposable
     private TimeSpan? _lastKey;
     private TimeSpan _sessionStart;
     private int _levelPending;
+    private float _sessionPeak;
     private Lazy<ParakeetRecognizer> _parakeet = new(() => new ParakeetRecognizer());
 
     public DictationHost(DispatcherQueue ui)
@@ -43,6 +44,7 @@ internal sealed class DictationHost : IDisposable
         _controller.TextChanged += t => _ui.TryEnqueue(() => _pill.SetTranscript(t));
         _controller.Inserted += t => _ui.TryEnqueue(() => OnInserted(t));
         _controller.Failed += m => _ui.TryEnqueue(() => OnFailed(m));
+        _controller.NothingHeard += d => Write($"heard nothing in {d.TotalSeconds:0.0} s of audio, loudest {_sessionPeak:P0}");
 
         _machine.ActionRequested += OnAction;
         _machine.StateChanged += (_, to) => _ui.TryEnqueue(() => OnState(to));
@@ -236,6 +238,7 @@ internal sealed class DictationHost : IDisposable
         {
             case DictationStatus.Listening:
                 _sessionStart = _clock.Elapsed;
+                _sessionPeak = 0;
                 if (_machine.State is DictationState.PushToTalk or DictationState.HandsFree)
                     _pill.ShowListening(_sink.Target, _machine.State == DictationState.HandsFree);
                 break;
@@ -268,6 +271,7 @@ internal sealed class DictationHost : IDisposable
     private void OnLevel(float peak)
     {
         // Capture thread, every 50 ms; skip if the UI hasn't caught up.
+        if (peak > _sessionPeak) _sessionPeak = peak;
         if (Interlocked.Exchange(ref _levelPending, 1) == 1) return;
         _ui.TryEnqueue(() =>
         {

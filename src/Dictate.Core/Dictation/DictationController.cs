@@ -40,6 +40,7 @@ public sealed class DictationController : IDisposable
     private readonly ITextSink _sink;
     private readonly Func<ITranscriber?> _createTranscriber;
     private readonly PreRollBuffer _preRoll;
+    private readonly int _sampleRate;
     private Session? _session;
     private bool _keepMicWarm;
     private int _finishing;
@@ -56,6 +57,7 @@ public sealed class DictationController : IDisposable
         _sink = sink;
         _createTranscriber = createTranscriber;
         _keepMicWarm = keepMicWarm;
+        _sampleRate = sampleRate;
         _preRoll = PreRollBuffer.ForDuration(preRoll ?? TimeSpan.FromMilliseconds(500), sampleRate);
         _audio.AudioAvailable += OnAudio;
         if (_keepMicWarm) _audio.Start();
@@ -67,6 +69,8 @@ public sealed class DictationController : IDisposable
     /// <summary>Text heard so far in the current dictation.</summary>
     public event Action<string>? TextChanged;
     public event Action<string>? Inserted;
+    /// <summary>A dictation finished with no text; carries how much audio the engine got.</summary>
+    public event Action<TimeSpan>? NothingHeard;
     public event Action<string>? Failed;
 
     /// <summary>
@@ -186,7 +190,10 @@ public sealed class DictationController : IDisposable
     {
         await s.Transcriber.ConnectAsync(s.Cancel.Token).ConfigureAwait(false);
         await foreach (var chunk in s.Audio.Reader.ReadAllAsync(s.Cancel.Token).ConfigureAwait(false))
+        {
             await s.Transcriber.SendAudioAsync(chunk, s.Cancel.Token).ConfigureAwait(false);
+            s.BytesSent += chunk.Length;
+        }
     }
 
     private async Task FinishAsync(Session s)
@@ -201,6 +208,10 @@ public sealed class DictationController : IDisposable
             {
                 await _sink.InsertAsync(text, CancellationToken.None).ConfigureAwait(false);
                 Inserted?.Invoke(text);
+            }
+            else
+            {
+                NothingHeard?.Invoke(TimeSpan.FromSeconds(s.BytesSent / 2.0 / _sampleRate));
             }
         }
         catch (Exception e)
@@ -273,5 +284,7 @@ public sealed class DictationController : IDisposable
             Channel.CreateUnbounded<ReadOnlyMemory<byte>>(new UnboundedChannelOptions { SingleReader = true });
         public CancellationTokenSource Cancel { get; } = new();
         public Task? Pump { get; set; }
+        /// <summary>Written only by the pump, read after it completes.</summary>
+        public long BytesSent { get; set; }
     }
 }

@@ -160,4 +160,22 @@ public class DictationControllerTests
         c.KeepMicWarm = true;
         Assert.True(audio.Running);
     }
+
+    [Fact]
+    public async Task An_empty_result_reports_how_much_audio_was_sent()
+    {
+        var audio = new FakeAudio();
+        var sink = new FakeSink();
+        var t = new FakeTranscriber("   ");
+        using var c = new DictationController(audio, sink, () => t, keepMicWarm: true, sampleRate: 4);
+        var heard = new TaskCompletionSource<TimeSpan>(TaskCreationOptions.RunContinuationsAsynchronously);
+        c.NothingHeard += d => heard.TrySetResult(d);
+
+        c.Handle(DictationAction.StartCapture);
+        audio.Speak(1, 2, 3, 4);
+        c.Handle(DictationAction.StopAndTranscribe);
+
+        Assert.Equal(TimeSpan.FromSeconds(0.5), await heard.Task.WaitAsync(Wait));
+        Assert.False(sink.Text.Task.IsCompleted);
+    }
 }
