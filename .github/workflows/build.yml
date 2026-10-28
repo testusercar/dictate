@@ -46,7 +46,7 @@ jobs:
           $path = 'src\Dictate\Package.appxmanifest'
           [xml]$manifest = Get-Content $path
           $manifest.Package.Identity.Version = "0.2.${{ github.run_number }}.0"
-          $manifest.Save((Resolve-Path $path))
+          $manifest.Save((Resolve-Path $path).Path)
 
       - name: Build MSIX
         shell: pwsh
