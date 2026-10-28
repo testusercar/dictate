@@ -60,8 +60,6 @@ internal sealed class DictationHost : IDisposable
     public event Action<DictationStatus>? StatusChanged;
     public event Action<string>? Inserted;
     public event Action<string>? Failed;
-    /// <summary>Something only the settings window can fix, such as a missing API key.</summary>
-    public event Action? SettingsNeeded;
 
     public SpeechEngine Engine
     {
@@ -231,7 +229,6 @@ internal sealed class DictationHost : IDisposable
         Write($"error {message}");
         _pill.ShowError(message, _sink.Target);
         Failed?.Invoke(message);
-        if (SetupNeeded is not null) SettingsNeeded?.Invoke();
     }
 
     private void OnLevel(float peak)
