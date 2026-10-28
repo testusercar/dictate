@@ -27,7 +27,9 @@ public partial class App : Application
 
     private void HandleActivation(AppActivationArguments args, bool redirected)
     {
-        if (args.Kind != ExtendedActivationKind.Protocol || args.Data is not IProtocolActivatedEventArgs p)
+        // A cold start from the Copilot key arrives as ProtocolForResults, a running instance gets Protocol.
+        var isProtocol = args.Kind is ExtendedActivationKind.Protocol or ExtendedActivationKind.ProtocolForResults;
+        if (!isProtocol || args.Data is not IProtocolActivatedEventArgs p)
         {
             _window!.Log("launch", $"{args.Kind}", null);
             return;
