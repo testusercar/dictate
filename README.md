@@ -18,7 +18,7 @@ Design doc: https://claude.ai/artifact/XkkRPGspyZsoPMQ8oK2HX8
 
 1. Windows sends the Copilot key's tap, hold and release to Dictate (a window message while it runs, a `dictate-key://` launch otherwise).
 2. The state machine turns those into push-to-talk (hold), hands-free (double tap, tap again to stop) and cancel (Esc).
-3. While you talk, 16 kHz mono audio streams to Grok and the partial text shows in a small Acrylic pill at the bottom of the screen. The pill never takes focus.
+3. While you talk, 16 kHz mono audio goes to the speech engine and the partial text shows in a small Acrylic pill at the bottom of the screen. The pill never takes focus.
 4. When you finish, the final text is typed into the window that had focus when you started, followed by a space.
 
 Windows only reports a hold after 300 ms. With **Catch the first words** on (the default), the
@@ -26,7 +26,13 @@ microphone stays open in the background and the last half second of audio is pre
 dictation, so the first word isn't clipped. The audio stays in memory and is dropped unless you
 dictate; Windows shows the microphone-in-use icon while it's on.
 
-The xAI API key is stored in Windows Credential Manager, never in a file.
+### Speech engines
+
+- **On this PC (default):** NVIDIA Parakeet TDT 0.6B v3 through [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx),
+  on the CPU. Settings downloads the model once (490 MB, into the app's local folder). Audio never
+  leaves the PC; the pill previews the text every 1.5 s and the final pass runs when you let go.
+- **Grok (xAI cloud):** streams audio to xAI while you talk. Needs an xAI API key, which is stored
+  in Windows Credential Manager, never in a file.
 
 ## Install
 
@@ -36,7 +42,7 @@ The xAI API key is stored in Windows Credential Manager, never in a file.
    (or `dictate-ARM64` on a Snapdragon laptop). Unzip it.
 2. In an **elevated** PowerShell, in that folder: `powershell -ExecutionPolicy Bypass -File .\Install.ps1`
    (this also removes the earlier key-test app).
-3. Open **Dictate** from Start, paste your xAI API key and press Save. It tests the key straight away.
+3. Open **Dictate** from Start and press **Download** next to Local speech model (or switch to Grok and paste an xAI API key).
 4. Settings > Personalization > Text input > **Customize Copilot key** > choose **Dictate**.
 
 ### Option B: build on your PC

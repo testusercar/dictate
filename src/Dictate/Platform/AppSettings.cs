@@ -14,6 +14,13 @@ internal sealed class AppSettings
         set => _values[nameof(KeepMicWarm)] = value;
     }
 
+    /// <summary>Which speech engine dictation uses.</summary>
+    public SpeechEngine Engine
+    {
+        get => Enum.TryParse<SpeechEngine>(Get(nameof(Engine), nameof(SpeechEngine.Local)), out var e) ? e : SpeechEngine.Local;
+        set => _values[nameof(Engine)] = value.ToString();
+    }
+
     /// <summary>Two-letter language code for Grok, or empty to auto-detect.</summary>
     public string Language
     {
@@ -22,4 +29,12 @@ internal sealed class AppSettings
     }
 
     private T Get<T>(string key, T fallback) => _values.TryGetValue(key, out var v) && v is T t ? t : fallback;
+}
+
+internal enum SpeechEngine
+{
+    /// <summary>Parakeet on this PC: private, free, works offline.</summary>
+    Local,
+    /// <summary>xAI's Grok speech-to-text: needs an API key and a connection.</summary>
+    Grok,
 }

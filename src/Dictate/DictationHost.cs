@@ -9,12 +9,13 @@ using Microsoft.UI.Dispatching;
 namespace Dictate;
 
 /// <summary>
-/// Wires the Copilot key, microphone, Grok and typing together, and keeps the recording pill
+/// Wires the Copilot key, microphone, speech engine and typing together, and keeps the recording pill
 /// in step. Created on the UI thread; its events are raised there too.
 /// </summary>
 internal sealed class DictationHost : IDisposable
 {
     private const int MaxLogLines = 300;
+    private static readonly TimeSpan LocalPreviewInterval = TimeSpan.FromSeconds(1.5);
 
     private readonly DispatcherQueue _ui;
     private readonly MicrophoneSource _mic = new();
@@ -26,6 +27,7 @@ internal sealed class DictationHost : IDisposable
     private TimeSpan? _lastKey;
     private TimeSpan _sessionStart;
     private int _levelPending;
+    private Lazy<ParakeetRecognizer> _parakeet = new(() => new ParakeetRecognizer());
 
     public DictationHost(DispatcherQueue ui)
     {
@@ -44,6 +46,8 @@ internal sealed class DictationHost : IDisposable
 
         _machine.ActionRequested += OnAction;
         _machine.StateChanged += (_, to) => _ui.TryEnqueue(() => OnState(to));
+
+        PreloadLocalEngine();
     }
 
     public AppSettings Settings { get; } = new();
@@ -58,6 +62,54 @@ internal sealed class DictationHost : IDisposable
     public event Action<string>? Failed;
     /// <summary>Something only the settings window can fix, such as a missing API key.</summary>
     public event Action? SettingsNeeded;
+
+    public SpeechEngine Engine
+    {
+        get => Settings.Engine;
+        set
+        {
+            Settings.Engine = value;
+            Write($"engine {value}");
+            PreloadLocalEngine();
+        }
+    }
+
+    /// <summary>What has to be set up before dictation works with the chosen engine, or null when it's ready.</summary>
+    public string? SetupNeeded => Settings.Engine switch
+    {
+        SpeechEngine.Local when !ParakeetModel.IsInstalled => "Download the local speech model in Dictate's settings to start dictating.",
+        SpeechEngine.Grok when string.IsNullOrWhiteSpace(Keys.Get()) => "Add your xAI API key in Dictate's settings, or switch to the local engine.",
+        _ => null,
+    };
+
+    /// <summary>Releases the local model's files, before it is replaced or deleted.</summary>
+    public void UnloadLocalEngine()
+    {
+        var old = _parakeet;
+        _parakeet = new(() => new ParakeetRecognizer());
+        if (old.IsValueCreated) old.Value.Dispose();
+    }
+
+    /// <summary>Loads the local model in the background so the first dictation doesn't wait for it.</summary>
+    public void PreloadLocalEngine()
+    {
+        if (Settings.Engine != SpeechEngine.Local || !ParakeetModel.IsInstalled) return;
+        var lazy = _parakeet;
+        if (lazy.IsValueCreated) return;
+        _ = Task.Run(() =>
+        {
+            var started = _clock.Elapsed;
+            try
+            {
+                _ = lazy.Value;
+                Write($"local model loaded in {(_clock.Elapsed - started).TotalMilliseconds:0} ms");
+            }
+            catch (Exception e)
+            {
+                Write($"local model failed to load: {e.Message}");
+            }
+        });
+    }
 
     public bool KeepMicWarm
     {
@@ -116,12 +168,15 @@ internal sealed class DictationHost : IDisposable
         }
     }
 
-    private ITranscriber? CreateTranscriber()
+    // Throws with a message for the user when the engine isn't set up yet.
+    private ITranscriber CreateTranscriber()
     {
-        var key = Keys.Get();
-        return string.IsNullOrWhiteSpace(key)
-            ? null
-            : new XaiStreamingTranscriber(new XaiSttOptions { ApiKey = key, Language = Settings.Language });
+        if (SetupNeeded is { } setup) throw new TranscriptionException(setup);
+        if (Settings.Engine == SpeechEngine.Grok)
+            return new XaiStreamingTranscriber(new XaiSttOptions { ApiKey = Keys.Get()!, Language = Settings.Language });
+
+        var lazy = _parakeet;
+        return new BufferedTranscriber(new DeferredRecognizer(() => lazy.Value), previewInterval: LocalPreviewInterval);
     }
 
     // Raised on the UI thread for key presses and on a timer thread when a single tap expires.
@@ -176,7 +231,7 @@ internal sealed class DictationHost : IDisposable
         Write($"error {message}");
         _pill.ShowError(message, _sink.Target);
         Failed?.Invoke(message);
-        if (string.IsNullOrWhiteSpace(Keys.Get())) SettingsNeeded?.Invoke();
+        if (SetupNeeded is not null) SettingsNeeded?.Invoke();
     }
 
     private void OnLevel(float peak)
@@ -196,5 +251,12 @@ internal sealed class DictationHost : IDisposable
         _controller.Dispose();
         _mic.Dispose();
         _pill.Hide();
+        if (_parakeet.IsValueCreated) _parakeet.Value.Dispose();
+    }
+
+    /// <summary>Waits for the model to finish loading on first use, off the UI thread.</summary>
+    private sealed class DeferredRecognizer(Func<IBatchRecognizer> get) : IBatchRecognizer
+    {
+        public string Recognize(float[] samples, int sampleRate) => get().Recognize(samples, sampleRate);
     }
 }
