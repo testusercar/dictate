@@ -1,0 +1,8 @@
+bin/
+obj/
+out/
+AppPackages/
+*.user
+.vs/
+*.pfx
+*.cer
