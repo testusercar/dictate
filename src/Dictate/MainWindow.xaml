@@ -55,6 +55,34 @@
                 <InfoBar x:Name="KeyBar" IsClosable="False" />
                 <InfoBar x:Name="ErrorBar" Severity="Error" Title="Last problem" IsClosable="True" />
 
+                <!-- Speech engine -->
+                <TextBlock Text="Speech engine" Margin="1,24,0,6" Style="{StaticResource BodyStrongTextBlockStyle}" />
+
+                <tk:SettingsCard Header="Transcribe with"
+                                 Description="On this PC keeps your voice private and works offline. Grok runs in xAI's cloud and needs an API key.">
+                    <tk:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE9F5;" />
+                    </tk:SettingsCard.HeaderIcon>
+                    <ComboBox x:Name="EngineBox" MinWidth="200" SelectionChanged="EngineBox_SelectionChanged">
+                        <ComboBoxItem Content="On this PC (Parakeet)" Tag="Local" />
+                        <ComboBoxItem Content="Grok (xAI cloud)" Tag="Grok" />
+                    </ComboBox>
+                </tk:SettingsCard>
+
+                <tk:SettingsCard x:Name="ModelCard" Header="Local speech model"
+                                 Description="NVIDIA Parakeet TDT 0.6B v3: 25 European languages with punctuation. A 490 MB download, then it runs offline.">
+                    <tk:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE7F8;" />
+                    </tk:SettingsCard.HeaderIcon>
+                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <ProgressBar x:Name="ModelProgress" Width="160" Maximum="1" Visibility="Collapsed" VerticalAlignment="Center" />
+                        <TextBlock x:Name="ModelState" VerticalAlignment="Center"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <Button x:Name="ModelButton" Click="ModelButton_Click" />
+                    </StackPanel>
+                </tk:SettingsCard>
+                <InfoBar x:Name="ModelBar" Severity="Error" IsClosable="True" />
+
                 <!-- Grok -->
                 <TextBlock Text="Grok" Margin="1,24,0,6" Style="{StaticResource BodyStrongTextBlockStyle}" />
 
@@ -139,7 +167,7 @@
                     <ToggleSwitch x:Name="StartupSwitch" Toggled="StartupSwitch_Toggled" />
                 </tk:SettingsCard>
 
-                <tk:SettingsExpander Header="Last dictation" Description="What Grok heard most recently.">
+                <tk:SettingsExpander Header="Last dictation" Description="What Dictate heard most recently.">
                     <tk:SettingsExpander.HeaderIcon>
                         <FontIcon Glyph="&#xE81C;" />
                     </tk:SettingsExpander.HeaderIcon>

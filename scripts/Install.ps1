@@ -31,6 +31,12 @@ Get-AppxPackage -Name 'Dictate.KeySpike' | ForEach-Object {
     Remove-AppxPackage -Package $_.PackageFullName
 }
 
+# A running Dictate blocks the update (0x80073D02).
+Get-Process -Name Dictate -ErrorAction SilentlyContinue | ForEach-Object {
+    Write-Host "Closing the running Dictate"
+    Stop-Process -Id $_.Id -Force
+}
+
 Write-Host "Installing $($msix.Name)"
 Add-AppxPackage -Path $msix.FullName -ForceUpdateFromAnyVersion
 

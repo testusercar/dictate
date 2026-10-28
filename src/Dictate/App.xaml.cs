@@ -21,7 +21,6 @@ public partial class App : Application
     {
         _host = new DictationHost(Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread());
         _window = new MainWindow(_host);
-        _host.SettingsNeeded += () => _window.Present();
 
         var current = AppInstance.GetCurrent();
         current.Activated += (_, a) => _window.DispatcherQueue.TryEnqueue(() => HandleActivation(a, redirected: true));

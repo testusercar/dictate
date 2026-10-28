@@ -39,6 +39,15 @@ jobs:
           Export-Certificate -Cert $cert -FilePath out\Dictate-Dev.cer | Out-Null
           "SIGNING_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
 
+      # Every build gets a higher version so it installs over the previous one.
+      - name: Stamp package version
+        shell: pwsh
+        run: |
+          $path = 'src\Dictate\Package.appxmanifest'
+          [xml]$manifest = Get-Content $path
+          $manifest.Package.Identity.Version = "0.2.${{ github.run_number }}.0"
+          $manifest.Save((Resolve-Path $path).Path)
+
       - name: Build MSIX
         shell: pwsh
         run: |

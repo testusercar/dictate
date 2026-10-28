@@ -27,6 +27,7 @@ public sealed partial class MainWindow : Window
     private readonly CopilotKeyFastPath _fastPath;
     private readonly EscapeHotKey _escape;
     private bool _loading = true;
+    private CancellationTokenSource? _modelDownload;
 
     internal MainWindow(DictationHost host)
     {
@@ -53,6 +54,8 @@ public sealed partial class MainWindow : Window
         };
 
         _host.StatusChanged += OnStatus;
+        // Escape belongs to Dictate only during hands-free dictation.
+        _host.CancelAvailableChanged += available => _escape.Enabled = available;
         _host.Inserted += text => LastText.Text = text;
         _host.Failed += message =>
         {
@@ -65,6 +68,8 @@ public sealed partial class MainWindow : Window
             LanguageBox.Items.Add(new ComboBoxItem { Content = name, Tag = code });
         LanguageBox.SelectedIndex = Math.Max(0, Array.FindIndex(Languages, l => l.Code == _host.Settings.Language));
         WarmMicSwitch.IsOn = _host.KeepMicWarm;
+        EngineBox.SelectedIndex = _host.Engine == SpeechEngine.Grok ? 1 : 0;
+        ShowModelState();
         ShowApiKeyState();
         ShowKeyRegistration();
         OnStatus(_host.Status);
@@ -77,18 +82,18 @@ public sealed partial class MainWindow : Window
     {
         AppWindow.Show();
         Activate();
-        if (string.IsNullOrWhiteSpace(_host.Keys.Get())) ApiKeyBox.Focus(FocusState.Programmatic);
+        if (_host.Engine == SpeechEngine.Grok && string.IsNullOrWhiteSpace(_host.Keys.Get()))
+            ApiKeyBox.Focus(FocusState.Programmatic);
     }
 
     private void OnStatus(DictationStatus status)
     {
-        // Escape belongs to Dictate only while it is listening.
-        _escape.Enabled = status == DictationStatus.Listening;
         StatusText.Text = status switch
         {
             DictationStatus.Listening => "Listening…",
             DictationStatus.Transcribing => "Transcribing…",
-            _ when string.IsNullOrWhiteSpace(_host.Keys.Get()) => "Add your xAI API key to start",
+            _ when _host.Engine == SpeechEngine.Local && !ParakeetModel.IsInstalled => "Download the local speech model to start",
+            _ when _host.SetupNeeded is not null => "Add your xAI API key to start",
             _ => "Ready",
         };
     }
@@ -175,6 +180,89 @@ public sealed partial class MainWindow : Window
         _host.Keys.Clear();
         TestBar.IsOpen = false;
         ShowApiKeyState();
+    }
+
+    private void EngineBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || EngineBox.SelectedItem is not ComboBoxItem { Tag: string tag }) return;
+        _host.Engine = Enum.Parse<SpeechEngine>(tag);
+        OnStatus(_host.Status);
+    }
+
+    private void ShowModelState()
+    {
+        var downloading = _modelDownload is not null;
+        var installed = ParakeetModel.IsInstalled;
+        ModelProgress.Visibility = downloading ? Visibility.Visible : Visibility.Collapsed;
+        ModelState.Text = downloading ? $"{ModelProgress.Value:P0}" : installed ? "Installed" : "Not downloaded";
+        ModelButton.Content = downloading ? "Cancel" : installed ? "Remove" : "Download";
+        ModelButton.Style = !downloading && !installed ? (Style)Application.Current.Resources["AccentButtonStyle"] : null;
+        OnStatus(_host.Status);
+    }
+
+    private async void ModelButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_modelDownload is { } running)
+        {
+            running.Cancel();
+            return;
+        }
+
+        if (ParakeetModel.IsInstalled)
+        {
+            _host.UnloadLocalEngine();
+            try
+            {
+                ParakeetModel.Delete();
+            }
+            catch (Exception ex)
+            {
+                ShowModelError("Couldn't remove the model", ex.Message);
+            }
+            ShowModelState();
+            return;
+        }
+
+        using var cts = new CancellationTokenSource();
+        _modelDownload = cts;
+        ModelBar.IsOpen = false;
+        ModelProgress.Value = 0;
+        ShowModelState();
+        var progress = new Progress<double>(p =>
+        {
+            ModelProgress.Value = p;
+            ModelState.Text = $"{p:P0}";
+        });
+
+        var started = DateTime.Now;
+        try
+        {
+            _host.UnloadLocalEngine();
+            await ParakeetModel.DownloadAsync(progress, cts.Token);
+            _host.Write($"model downloaded in {(DateTime.Now - started).TotalSeconds:0} s");
+            _host.PreloadLocalEngine();
+        }
+        catch (OperationCanceledException)
+        {
+            _host.Write("model download cancelled");
+        }
+        catch (Exception ex)
+        {
+            _host.Write($"model download failed: {ex.Message}");
+            ShowModelError("The download didn't finish", ex.Message);
+        }
+        finally
+        {
+            _modelDownload = null;
+            ShowModelState();
+        }
+    }
+
+    private void ShowModelError(string title, string message)
+    {
+        ModelBar.Title = title;
+        ModelBar.Message = message;
+        ModelBar.IsOpen = true;
     }
 
     private void LanguageBox_SelectionChanged(object sender, SelectionChangedEventArgs e)

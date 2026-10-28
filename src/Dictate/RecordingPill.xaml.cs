@@ -2,13 +2,17 @@ using System.Runtime.InteropServices;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
-using Windows.Graphics;
 
 namespace Dictate;
 
 /// <summary>
 /// The small always-on-top capsule shown while dictating. It never takes focus, so the
 /// text still goes to the app the user was in.
+/// <para>
+/// The window is shown once at startup and then only moved on and off screen. Showing a window
+/// while the Copilot key is held makes Windows end the hold about 50 ms in and replay the key as
+/// taps, so push-to-talk falls apart.
+/// </para>
 /// </summary>
 public sealed partial class RecordingPill : Window
 {
@@ -20,6 +24,7 @@ public sealed partial class RecordingPill : Window
     private readonly IntPtr _hwnd;
     private readonly DispatcherQueueTimer _hideTimer;
     private float _level;
+    private bool _onScreen;
 
     public RecordingPill()
     {
@@ -47,8 +52,11 @@ public sealed partial class RecordingPill : Window
         _hideTimer.IsRepeating = false;
         _hideTimer.Tick += (_, _) => Hide();
 
-        // Closing would destroy the window; it is only ever hidden.
+        // Closing would destroy the window; it is only ever parked.
         AppWindow.Closing += (_, e) => e.Cancel = true;
+
+        Park();
+        ShowWindow(_hwnd, SW_SHOWNOACTIVATE);
     }
 
     public IntPtr Handle => _hwnd;
@@ -64,7 +72,6 @@ public sealed partial class RecordingPill : Window
         ErrorGlyph.Visibility = Visibility.Collapsed;
         LevelHalo.Visibility = Visibility.Visible;
         Place(nearWindow);
-        AppWindow.Show(activateWindow: false);
     }
 
     public void SetMode(bool handsFree) =>
@@ -99,11 +106,7 @@ public sealed partial class RecordingPill : Window
         LevelHalo.Visibility = Visibility.Collapsed;
         ModeText.Text = "Dictate";
         TranscriptText.Text = message;
-        if (!AppWindow.IsVisible)
-        {
-            Place(nearWindow);
-            AppWindow.Show(activateWindow: false);
-        }
+        if (!_onScreen) Place(nearWindow);
         _hideTimer.Interval = TimeSpan.FromSeconds(5);
         _hideTimer.Start();
     }
@@ -113,7 +116,7 @@ public sealed partial class RecordingPill : Window
         _hideTimer.Stop();
         Busy.IsActive = false;
         _level = 0;
-        AppWindow.Hide();
+        Park();
     }
 
     /// <summary>Hides the pill unless an error is still on screen.</summary>
@@ -132,11 +135,18 @@ public sealed partial class RecordingPill : Window
         var work = DisplayArea.GetFromWindowId(id, DisplayAreaFallback.Primary).WorkArea;
         var width = (int)(WidthDip * scale);
         var height = (int)(HeightDip * scale);
-        AppWindow.MoveAndResize(new RectInt32(
+        SetWindowPos(_hwnd, HWND_TOPMOST,
             work.X + (work.Width - width) / 2,
             work.Y + work.Height - height - (int)(BottomMarginDip * scale),
-            width,
-            height));
+            width, height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        _onScreen = true;
+    }
+
+    // Far off every monitor, still "visible" to Windows so bringing it back is only a move.
+    private void Park()
+    {
+        SetWindowPos(_hwnd, IntPtr.Zero, -32000, -32000, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
+        _onScreen = false;
     }
 
     private const int GWL_EXSTYLE = -20;
@@ -146,6 +156,18 @@ public sealed partial class RecordingPill : Window
     private const int DWMWCP_ROUND = 2;
     private const uint MONITOR_DEFAULTTOPRIMARY = 1;
     private const int MDT_EFFECTIVE_DPI = 0;
+    private const int SW_SHOWNOACTIVATE = 4;
+    private static readonly IntPtr HWND_TOPMOST = new(-1);
+    private const uint SWP_NOSIZE = 0x0001;
+    private const uint SWP_NOZORDER = 0x0004;
+    private const uint SWP_NOACTIVATE = 0x0010;
+    private const uint SWP_SHOWWINDOW = 0x0040;
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hwnd, int command);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(IntPtr hwnd, IntPtr insertAfter, int x, int y, int cx, int cy, uint flags);
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
     private static extern nint GetWindowLongPtr(IntPtr hwnd, int index);
