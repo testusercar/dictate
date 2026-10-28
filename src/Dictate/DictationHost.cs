@@ -156,6 +156,7 @@ internal sealed class DictationHost : IDisposable
     {
         var entry = $"{DateTime.Now:HH:mm:ss.fff}  {line}";
         Debug.WriteLine(entry);
+        AppendToFile(entry);
         if (_ui.HasThreadAccess) Add(entry);
         else _ui.TryEnqueue(() => Add(entry));
 
@@ -163,6 +164,28 @@ internal sealed class DictationHost : IDisposable
         {
             Log.Insert(0, e);
             if (Log.Count > MaxLogLines) Log.RemoveAt(Log.Count - 1);
+        }
+    }
+
+    /// <summary>The diagnostics log on disk, so it can be read after the fact: LocalState\dictate.log in the package folder.</summary>
+    public static string LogPath { get; } = Path.Combine(Windows.Storage.ApplicationData.Current.LocalFolder.Path, "dictate.log");
+
+    private static readonly object FileGate = new();
+
+    private static void AppendToFile(string entry)
+    {
+        try
+        {
+            lock (FileGate)
+            {
+                var info = new FileInfo(LogPath);
+                if (info.Exists && info.Length > 2_000_000) File.Move(LogPath, Path.ChangeExtension(LogPath, ".old.log"), overwrite: true);
+                File.AppendAllText(LogPath, $"{DateTime.Now:yyyy-MM-dd} {entry}{Environment.NewLine}");
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Logging must never break dictation.
         }
     }
 
