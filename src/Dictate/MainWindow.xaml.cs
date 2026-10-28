@@ -54,6 +54,8 @@ public sealed partial class MainWindow : Window
         };
 
         _host.StatusChanged += OnStatus;
+        // Escape belongs to Dictate only during hands-free dictation.
+        _host.CancelAvailableChanged += available => _escape.Enabled = available;
         _host.Inserted += text => LastText.Text = text;
         _host.Failed += message =>
         {
@@ -86,8 +88,6 @@ public sealed partial class MainWindow : Window
 
     private void OnStatus(DictationStatus status)
     {
-        // Escape belongs to Dictate only while it is listening.
-        _escape.Enabled = status == DictationStatus.Listening;
         StatusText.Text = status switch
         {
             DictationStatus.Listening => "Listening…",

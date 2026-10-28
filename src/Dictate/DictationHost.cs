@@ -60,6 +60,14 @@ internal sealed class DictationHost : IDisposable
     public event Action<DictationStatus>? StatusChanged;
     public event Action<string>? Inserted;
     public event Action<string>? Failed;
+    /// <summary>
+    /// Whether Escape should cancel right now. Only in hands-free: claiming a hotkey while the
+    /// Copilot key is held could disturb the hold, and letting go already ends push-to-talk.
+    /// </summary>
+    public event Action<bool>? CancelAvailableChanged;
+
+    public bool CancelAvailable =>
+        _controller.Status == DictationStatus.Listening && _machine.State == DictationState.HandsFree;
 
     public SpeechEngine Engine
     {
@@ -216,8 +224,10 @@ internal sealed class DictationHost : IDisposable
             // A single tap also opens the mic, but the pill waits until it's clearly a dictation.
             case DictationState.PushToTalk or DictationState.HandsFree when _controller.Status == DictationStatus.Listening:
                 _pill.ShowListening(_sink.Target, state == DictationState.HandsFree);
+                Write($"pill  {state}");
                 break;
         }
+        CancelAvailableChanged?.Invoke(CancelAvailable);
     }
 
     private void OnStatus(DictationStatus status)
@@ -238,6 +248,7 @@ internal sealed class DictationHost : IDisposable
         }
         Write($"state {status} at {(_clock.Elapsed - _sessionStart).TotalMilliseconds:0} ms");
         StatusChanged?.Invoke(status);
+        CancelAvailableChanged?.Invoke(CancelAvailable);
     }
 
     private void OnInserted(string text)
