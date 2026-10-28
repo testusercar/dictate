@@ -28,7 +28,7 @@ jobs:
           dotnet-version: 9.0.x
       - uses: microsoft/setup-msbuild@v2
 
-      # Throwaway certificate per run; only its public .cer is published.
+      # Throwaway certificate per run, used from the user store by thumbprint; only its public .cer is published.
       - name: Create signing certificate
         shell: pwsh
         run: |
@@ -36,9 +36,8 @@ jobs:
           $cert = New-SelfSignedCertificate -Type Custom -Subject 'CN=Dictate Dev' -KeyUsage DigitalSignature `
             -FriendlyName 'Dictate Dev' -CertStoreLocation 'Cert:\CurrentUser\My' `
             -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3', '2.5.29.19={text}')
-          Export-PfxCertificate -Cert $cert -FilePath "$env:RUNNER_TEMP\dev.pfx" `
-            -Password (ConvertTo-SecureString 'ci' -AsPlainText -Force) | Out-Null
           Export-Certificate -Cert $cert -FilePath out\Dictate-Dev.cer | Out-Null
+          "SIGNING_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
 
       - name: Build MSIX
         shell: pwsh
@@ -47,8 +46,7 @@ jobs:
           msbuild src\Dictate.KeySpike\Dictate.KeySpike.csproj /restore /m `
             /p:Configuration=Release /p:Platform=${{ matrix.platform }} /p:RuntimeIdentifier=$rid `
             /p:GenerateAppxPackageOnBuild=true /p:AppxPackageDir="$PWD\out\" `
-            /p:AppxPackageSigningEnabled=true /p:PackageCertificateKeyFile="$env:RUNNER_TEMP\dev.pfx" `
-            /p:PackageCertificatePassword=ci
+            /p:AppxPackageSigningEnabled=true /p:PackageCertificateThumbprint=$env:SIGNING_THUMBPRINT
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Copy-Item scripts\Install.ps1 out\
           Get-ChildItem -Recurse out | Select-Object FullName
