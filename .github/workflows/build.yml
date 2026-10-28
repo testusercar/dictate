@@ -16,7 +16,7 @@ jobs:
           dotnet-version: 9.0.x
       - run: dotnet test tests/Dictate.Core.Tests --logger "console;verbosity=normal"
 
-  key-spike:
+  app:
     runs-on: windows-latest
     strategy:
       matrix:
@@ -43,7 +43,7 @@ jobs:
         shell: pwsh
         run: |
           $rid = 'win-' + '${{ matrix.platform }}'.ToLower()
-          msbuild src\Dictate.KeySpike\Dictate.KeySpike.csproj /restore /m `
+          msbuild src\Dictate\Dictate.csproj /restore /m `
             /p:Configuration=Release /p:Platform=${{ matrix.platform }} /p:RuntimeIdentifier=$rid `
             /p:GenerateAppxPackageOnBuild=true /p:AppxPackageDir="$PWD\out\" `
             /p:AppxPackageSigningEnabled=true /p:PackageCertificateThumbprint=$env:SIGNING_THUMBPRINT
@@ -53,5 +53,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: dictate-key-spike-${{ matrix.platform }}
+          name: dictate-${{ matrix.platform }}
           path: out/

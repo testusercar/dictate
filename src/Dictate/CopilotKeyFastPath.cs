@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using Dictate.Core;
 
-namespace Dictate.KeySpike;
+namespace Dictate;
 
 /// <summary>
 /// Registers a window for the Copilot key "fast path": while the app is running, Windows posts a

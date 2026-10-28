@@ -85,4 +85,11 @@ public class TranscriptAssemblerTests
         var uri = t.BuildUri();
         Assert.Equal("wss://api.x.ai/v1/stt?sample_rate=16000&encoding=pcm&language=en&model=grok-voice-transcribe-2.0&interim_results=true", uri.ToString());
     }
+
+    [Fact]
+    public void Empty_language_is_left_out_for_auto_detect()
+    {
+        var t = new XaiStreamingTranscriber(new XaiSttOptions { ApiKey = "k", Language = "" });
+        Assert.DoesNotContain("language=", t.BuildUri().Query);
+    }
 }

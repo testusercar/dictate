@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Builds and installs the key-test MSIX on this PC, signed with a local dev certificate.
+  Builds and installs the Dictate MSIX on this PC, signed with a local dev certificate.
 .DESCRIPTION
   Needs Visual Studio 2022 (or Build Tools) with the "WinUI application development" workload
   and the .NET 9 SDK. Run elevated the first time so the certificate can be trusted.
@@ -24,7 +24,7 @@ if (-not (Test-Path "Cert:\LocalMachine\TrustedPeople\$($cert.Thumbprint)")) {
 
 $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
 $out = Join-Path $root 'out\'
-& $msbuild (Join-Path $root 'src\Dictate.KeySpike\Dictate.KeySpike.csproj') /restore /m `
+& $msbuild (Join-Path $root 'src\Dictate\Dictate.csproj') /restore /m `
     /p:Configuration=Release /p:Platform=$Platform /p:RuntimeIdentifier="win-$($Platform.ToLower())" `
     /p:GenerateAppxPackageOnBuild=true /p:AppxPackageDir=$out `
     /p:AppxPackageSigningEnabled=true /p:PackageCertificateThumbprint=$($cert.Thumbprint)

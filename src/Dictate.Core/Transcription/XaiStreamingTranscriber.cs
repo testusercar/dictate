@@ -8,7 +8,7 @@ public sealed record XaiSttOptions
     public required string ApiKey { get; init; }
     public Uri Endpoint { get; init; } = new("wss://api.x.ai/v1/stt");
     public string Model { get; init; } = "grok-voice-transcribe-2.0";
-    /// <summary>Two-letter code; enables inverse text normalization (numbers, dates) on the server.</summary>
+    /// <summary>Two-letter code; enables inverse text normalization (numbers, dates) on the server. Empty lets the server detect it.</summary>
     public string Language { get; init; } = "en";
     public int SampleRate { get; init; } = 16000;
     public TimeSpan ConnectTimeout { get; init; } = TimeSpan.FromSeconds(10);
@@ -42,15 +42,12 @@ public sealed class XaiStreamingTranscriber : ITranscriber
 
     public Uri BuildUri()
     {
-        var query = string.Join('&', new[]
-        {
-            $"sample_rate={_options.SampleRate}",
-            "encoding=pcm",
-            $"language={Uri.EscapeDataString(_options.Language)}",
-            $"model={Uri.EscapeDataString(_options.Model)}",
-            "interim_results=true",
-        });
-        return new UriBuilder(_options.Endpoint) { Query = query }.Uri;
+        var parts = new List<string> { $"sample_rate={_options.SampleRate}", "encoding=pcm" };
+        if (!string.IsNullOrEmpty(_options.Language))
+            parts.Add($"language={Uri.EscapeDataString(_options.Language)}");
+        parts.Add($"model={Uri.EscapeDataString(_options.Model)}");
+        parts.Add("interim_results=true");
+        return new UriBuilder(_options.Endpoint) { Query = string.Join('&', parts) }.Uri;
     }
 
     public async Task ConnectAsync(CancellationToken ct)
