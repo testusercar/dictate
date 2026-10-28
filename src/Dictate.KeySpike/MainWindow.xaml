@@ -5,39 +5,97 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="Dictate: Copilot key test">
 
-    <Grid x:Name="Root" Padding="24" RowSpacing="12" KeyDown="Root_KeyDown">
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="Root" KeyDown="Root_KeyDown">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="48" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Style="{StaticResource SubtitleTextBlockStyle}"
-                   Text="Hold the Copilot key to talk. Double tap for hands-free. Esc cancels." TextWrapping="Wrap" />
+        <!-- Custom title bar drawn on Mica; caption buttons stay system-drawn. -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Padding="16,0,0,0" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Image Source="Assets/Square44x44Logo.png" Width="16" Height="16" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="Dictate · Copilot key test" VerticalAlignment="Center"
+                       Style="{StaticResource CaptionTextBlockStyle}" />
+        </Grid>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12">
-            <TextBlock Text="State:" Style="{StaticResource TitleTextBlockStyle}" />
-            <TextBlock x:Name="StateText" Text="Idle" Style="{StaticResource TitleTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-        </StackPanel>
+        <Grid Grid.Row="1" Padding="24,8,24,24" RowSpacing="16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-        <InfoBar Grid.Row="2" x:Name="RegistrationBar" IsOpen="True" IsClosable="False" />
+            <!-- Status card -->
+            <Border Grid.Row="0" Padding="20" CornerRadius="{StaticResource OverlayCornerRadius}"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE720;" FontSize="32" VerticalAlignment="Center"
+                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                    <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock x:Name="StateText" Text="Idle" Style="{StaticResource TitleTextBlockStyle}" />
+                        <TextBlock Text="Hold the Copilot key to talk. Double tap for hands-free. Esc cancels."
+                                   Style="{StaticResource BodyTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+            </Border>
 
-        <ListView Grid.Row="3" x:Name="LogList" SelectionMode="None"
-                  BorderThickness="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
-            <ListView.ItemTemplate>
-                <DataTemplate x:DataType="x:String">
-                    <TextBlock Text="{x:Bind}" FontFamily="Cascadia Mono, Consolas" FontSize="12" />
-                </DataTemplate>
-            </ListView.ItemTemplate>
-        </ListView>
+            <InfoBar Grid.Row="1" x:Name="RegistrationBar" IsOpen="True" IsClosable="False" />
 
-        <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="8">
-            <Button Content="Copy log" Click="CopyLog_Click" />
-            <Button Content="Clear" Click="Clear_Click" />
-            <Button Content="Open Copilot key settings" Click="OpenSettings_Click" />
-        </StackPanel>
+            <!-- Event log card -->
+            <Border Grid.Row="2" CornerRadius="{StaticResource OverlayCornerRadius}"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Event log" Margin="20,16,20,8" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <ListView Grid.Row="1" x:Name="LogList" SelectionMode="None" Padding="8,0,8,8">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <TextBlock Text="{x:Bind}" FontFamily="Cascadia Mono, Consolas" FontSize="12" />
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
+            </Border>
+
+            <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8">
+                <Button Style="{StaticResource AccentButtonStyle}" Click="OpenSettings_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE713;" FontSize="14" />
+                        <TextBlock Text="Copilot key settings" />
+                    </StackPanel>
+                </Button>
+                <Button Click="CopyLog_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE8C8;" FontSize="14" />
+                        <TextBlock Text="Copy log" />
+                    </StackPanel>
+                </Button>
+                <Button Click="Clear_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE74D;" FontSize="14" />
+                        <TextBlock Text="Clear" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>

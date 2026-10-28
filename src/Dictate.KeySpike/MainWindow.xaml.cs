@@ -22,6 +22,8 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         LogList.ItemsSource = _log;
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(AppTitleBar);
         AppWindow.Resize(new Windows.Graphics.SizeInt32(760, 820));
 
         _machine.StateChanged += (_, to) => DispatcherQueue.TryEnqueue(() => StateText.Text = to.ToString());
