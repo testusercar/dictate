@@ -1,3 +1,4 @@
+using Dictate.Core;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Win32;
@@ -16,10 +17,12 @@ public sealed partial class MainWindow : Window
     private readonly FlowSettings _settings;
     private readonly Log _log;
     private readonly CopilotKeyFastPath _fastPath;
+    private readonly IDisposable _hook;
     private bool _loading = true;
 
-    internal MainWindow(WisprBridge bridge, FlowSettings settings, Log log)
+    internal MainWindow(WisprBridge bridge, FlowSettings settings, Log log, Action<KeyEvent, string> onWindowsKey, IDisposable hook)
     {
+        _hook = hook;
         _bridge = bridge;
         _settings = settings;
         _log = log;
@@ -29,7 +32,7 @@ public sealed partial class MainWindow : Window
         AppWindow.Resize(new Windows.Graphics.SizeInt32(860, 760));
 
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-        _fastPath = new CopilotKeyFastPath(hwnd, e => _bridge.OnKey(e, "fast path"));
+        _fastPath = new CopilotKeyFastPath(hwnd, e => onWindowsKey(e, "fast path"));
 
         // Hide instead of closing: the window carries the Copilot key fast path.
         AppWindow.Closing += (_, e) =>
@@ -169,6 +172,7 @@ public sealed partial class MainWindow : Window
 
     private void Quit_Click(object sender, RoutedEventArgs e)
     {
+        _hook.Dispose();
         _fastPath.Dispose();
         _bridge.Dispose();
         Application.Current.Exit();

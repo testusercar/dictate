@@ -45,8 +45,11 @@ internal sealed class KeyInjector : IDisposable
         }
     }
 
-    /// <summary>Releases a key that is physically reported down but that we never pressed (left over from the Copilot key).</summary>
-    public void ReleaseStray(ushort key) => Send(new[] { Key(key, up: true) });
+    /// <summary>Sends one key release, for a key something else pressed.</summary>
+    public static void SendUp(ushort key) => Send(new[] { Key(key, up: true) });
+
+    /// <summary>Sends one quick press and release.</summary>
+    public static void SendTap(ushort key) => Send(new[] { Key(key, up: false), Key(key, up: true) });
 
     public static bool IsDown(ushort key) => (GetAsyncKeyState(key) & 0x8000) != 0;
 
@@ -145,6 +148,8 @@ internal static class VirtualKeys
     public const ushort RWin = 0x5C;
     public const ushort Space = 0x20;
     public const ushort F23 = 0x86;
+    /// <summary>No key uses it; pressing it tells Windows "Win was part of a shortcut", so Start stays closed.</summary>
+    public const ushort Unassigned = 0xE8;
 
     public static string Name(ushort vk) => vk switch
     {

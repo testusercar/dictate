@@ -10,6 +10,8 @@ public partial class App : Application
     private Log? _log;
     private WisprBridge? _bridge;
     private MainWindow? _window;
+    private CopilotKeyHook? _hook;
+    private bool _windowsHoldOpen;
 
     public App()
     {
@@ -23,7 +25,8 @@ public partial class App : Application
         _log = new Log(Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread());
         var settings = new FlowSettings();
         _bridge = new WisprBridge(settings, _log);
-        _window = new MainWindow(_bridge, settings, _log);
+        _hook = new CopilotKeyHook(e => _bridge.OnKey(e, "keyboard"), _log.Write);
+        _window = new MainWindow(_bridge, settings, _log, OnWindowsKey, _hook);
         _log.Write($"Flow Key {Windows.ApplicationModel.Package.Current.Id.Version.ToText()} started");
         var (ptt, handsFree) = WisprConfig.Read();
         _log.Write($"wispr push to talk {ptt?.Name ?? "unreadable"}, hands-free {handsFree?.Name ?? "unreadable"}; " +
@@ -44,7 +47,7 @@ public partial class App : Application
                 when args.Data is IProtocolActivatedEventArgs p:
                 var state = HttpUtility.ParseQueryString(p.Uri.Query)["state"];
                 if (CopilotKeyFastPath.FromUriState(state) is { } key)
-                    _bridge!.OnKey(key, redirected ? "uri" : "uri (cold)");
+                    OnWindowsKey(key, redirected ? "uri" : "uri (cold)");
                 else
                     _log!.Write($"uri   unknown state '{state}'");
                 break;
@@ -58,6 +61,22 @@ public partial class App : Application
                 _window!.Present();
                 break;
         }
+    }
+
+    /// <summary>
+    /// A Copilot key event from Windows (fast path or URI). With the keyboard hook on, Windows only
+    /// sees the key when Flow Key wasn't running yet: the press that launched it, and that press's release.
+    /// </summary>
+    private void OnWindowsKey(KeyEvent e, string source)
+    {
+        var use = !_hook!.IsActive || source == "uri (cold)" || (e == KeyEvent.HoldEnd && _windowsHoldOpen);
+        if (!use)
+        {
+            _log!.Write($"key   {e,-9} {source,-12} ignored, the keyboard hook has it");
+            return;
+        }
+        if (_hook.IsActive) _windowsHoldOpen = e == KeyEvent.HoldStart;
+        _bridge!.OnKey(e, source);
     }
 }
 

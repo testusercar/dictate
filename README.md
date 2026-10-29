@@ -74,8 +74,10 @@ but press Wispr Flow's own shortcuts, using the same key handling as Dictate:
 
 Wispr Flow does all the listening and typing. Limits:
 
-- Windows only reports a hold after 300 ms, so Wispr starts listening about a third of a second
-  after you press the key. Start talking a beat after pressing.
+- Flow Key reads the key itself with a keyboard hook (as PowerToys does to remap it), because
+  Windows' own Copilot key events keep Win + Shift + F23 held down, which Wispr won't match. A
+  press counts as a hold after 250 ms, so start talking a beat after pressing. Windows' events are
+  only used for the press that launches Flow Key.
 - If Wispr Flow runs as administrator, Flow Key (which doesn't) can't reach it.
 - Flow Key reads Wispr's shortcuts from `%APPDATA%\Wispr Flow\config.json` (read only), so it
   follows them when you change them in Wispr. If that ever fails, pick them in Flow Key's window.

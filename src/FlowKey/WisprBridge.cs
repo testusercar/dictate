@@ -13,10 +13,6 @@ internal sealed class WisprBridge : IDisposable
     // A safety net in case Windows never reports the release: nothing stays held down for long.
     private static readonly TimeSpan MaxHold = TimeSpan.FromMinutes(3);
 
-    // Keys the Copilot key itself is made of (Win + Shift + F23). If Windows still reports one of
-    // them down, Wispr would see it as part of the shortcut and not match, so it is let go first.
-    private static readonly ushort[] CopilotKeyParts = { VirtualKeys.LShift, VirtualKeys.F23 };
-
     private readonly KeyStateMachine _machine = new();
     private readonly KeyInjector _keys = new();
     private readonly FlowSettings _settings;
@@ -62,7 +58,6 @@ internal sealed class WisprBridge : IDisposable
         {
             if (to == DictationState.PushToTalk)
             {
-                ReleaseCopilotKeyParts();
                 var shortcut = _settings.PushToTalk;
                 _keys.Press(shortcut.Keys);
                 _maxHold.Change(MaxHold, Timeout.InfiniteTimeSpan);
@@ -78,7 +73,6 @@ internal sealed class WisprBridge : IDisposable
             // Into hands-free starts it in Wispr; leaving it (another tap) stops it.
             if (to == DictationState.HandsFree || from == DictationState.HandsFree)
             {
-                ReleaseCopilotKeyParts();
                 var shortcut = _settings.HandsFree;
                 _keys.Tap(shortcut.Keys);
                 Report($"tap   {shortcut.Name} ({(to == DictationState.HandsFree ? "start" : "stop")} hands-free)");
@@ -97,20 +91,13 @@ internal sealed class WisprBridge : IDisposable
         Sent?.Invoke(line);
     }
 
+    // Letting go of these by hand would end Windows' hold, so they are only reported. With the
+    // keyboard hook on, Windows never sees the Copilot key and this should say nothing.
     private void ReportHeldKeys()
     {
         var down = new[] { VirtualKeys.LWin, VirtualKeys.RWin, VirtualKeys.LShift, VirtualKeys.RShift, VirtualKeys.LControl, VirtualKeys.LMenu, VirtualKeys.F23 }
             .Where(KeyInjector.IsDown).ToArray();
         _log.Write(down.Length == 0 ? "held  nothing" : $"held  {VirtualKeys.Describe(down)}");
-    }
-
-    private void ReleaseCopilotKeyParts()
-    {
-        foreach (var key in CopilotKeyParts.Where(KeyInjector.IsDown))
-        {
-            _keys.ReleaseStray(key);
-            _log.Write($"let go of a stray {VirtualKeys.Name(key)}");
-        }
     }
 
     private void OnMaxHold()
