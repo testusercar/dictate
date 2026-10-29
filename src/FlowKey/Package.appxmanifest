@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap3 uap5 rescap">
+
+  <!-- Publisher must match the subject of the signing certificate (see scripts/New-DevCert.ps1). -->
+  <Identity Name="FlowKey" Publisher="CN=Dictate Dev" Version="0.1.0.0" />
+
+  <Properties>
+    <DisplayName>Flow Key</DisplayName>
+    <PublisherDisplayName>Dictate</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="x-generate" />
+  </Resources>
+
+  <Applications>
+    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
+      <uap:VisualElements
+        DisplayName="Flow Key"
+        Description="Drives Wispr Flow from the Copilot key."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+        <uap:SplashScreen Image="Assets\SplashScreen.png" />
+      </uap:VisualElements>
+
+      <Extensions>
+        <uap:Extension Category="windows.protocol">
+          <uap:Protocol Name="flowkey">
+            <uap:DisplayName>Flow Key Copilot key events</uap:DisplayName>
+          </uap:Protocol>
+        </uap:Extension>
+
+        <!-- On by default: the key only works while Flow Key runs. -->
+        <uap5:Extension Category="windows.startupTask">
+          <uap5:StartupTask TaskId="FlowKeyStartup" Enabled="true" DisplayName="Flow Key" />
+        </uap5:Extension>
+
+        <!-- Makes Dictate selectable in Settings > Personalization > Text input > Customize Copilot key. -->
+        <uap3:Extension Category="windows.appExtension">
+          <uap3:AppExtension Name="com.microsoft.windows.copilotkeyprovider"
+            Id="FlowKey"
+            DisplayName="Wispr Flow (via Flow Key)"
+            Description="Hold for push-to-talk, double tap for hands-free"
+            PublicFolder="Public">
+            <uap3:Properties>
+              <SingleTap MessageWParam="0">flowkey://?state=Tap</SingleTap>
+              <PressAndHoldStart MessageWParam="1">flowkey://?state=Down</PressAndHoldStart>
+              <PressAndHoldStop MessageWParam="2">flowkey://?state=Up</PressAndHoldStop>
+            </uap3:Properties>
+          </uap3:AppExtension>
+        </uap3:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

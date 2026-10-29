@@ -21,6 +21,8 @@ jobs:
     strategy:
       matrix:
         platform: [x64, ARM64]
+        # Dictate is the full app; Flow Key is the small helper that drives Wispr Flow from the Copilot key.
+        project: [Dictate, FlowKey]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -43,7 +45,7 @@ jobs:
       - name: Stamp package version
         shell: pwsh
         run: |
-          $path = 'src\Dictate\Package.appxmanifest'
+          $path = 'src\${{ matrix.project }}\Package.appxmanifest'
           [xml]$manifest = Get-Content $path
           $manifest.Package.Identity.Version = "0.2.${{ github.run_number }}.0"
           $manifest.Save((Resolve-Path $path).Path)
@@ -52,15 +54,15 @@ jobs:
         shell: pwsh
         run: |
           $rid = 'win-' + '${{ matrix.platform }}'.ToLower()
-          msbuild src\Dictate\Dictate.csproj /restore /m `
+          msbuild src\${{ matrix.project }}\${{ matrix.project }}.csproj /restore /m `
             /p:Configuration=Release /p:Platform=${{ matrix.platform }} /p:RuntimeIdentifier=$rid `
             /p:GenerateAppxPackageOnBuild=true /p:AppxPackageDir="$PWD\out\" `
             /p:AppxPackageSigningEnabled=true /p:PackageCertificateThumbprint=$env:SIGNING_THUMBPRINT
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Copy-Item scripts\Install.ps1 out\
+          Copy-Item scripts\${{ matrix.project == 'FlowKey' && 'Install-FlowKey.ps1' || 'Install.ps1' }} out\
           Get-ChildItem -Recurse out | Select-Object FullName
 
       - uses: actions/upload-artifact@v4
         with:
-          name: dictate-${{ matrix.platform }}
+          name: ${{ matrix.project == 'FlowKey' && 'flowkey' || 'dictate' }}-${{ matrix.platform }}
           path: out/

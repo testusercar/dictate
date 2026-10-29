@@ -13,6 +13,7 @@ Design doc: https://claude.ai/artifact/XkkRPGspyZsoPMQ8oK2HX8
 | `src/Dictate.Core` | Platform-free logic: the Copilot key state machine, the Grok streaming transcriber (`wss://api.x.ai/v1/stt`), the pre-roll buffer and the dictation session controller. |
 | `tests/Dictate.Core.Tests` | Unit tests for all of the above (run anywhere with `dotnet test`). |
 | `src/Dictate` | The packaged WinUI 3 app: Copilot key provider, microphone capture, typing into the focused app, the recording pill and the settings window. |
+| `src/FlowKey` | **Flow Key**, a small helper that gives the Copilot key to Wispr Flow instead (see below). |
 
 ## How it works
 
@@ -60,6 +61,28 @@ certificate (`CN=Dictate Dev`) the first time, builds the MSIX, and installs it.
   **Start with Windows** keeps it ready after you sign in.
 - Text can't be typed into apps running as administrator (a Windows rule).
 - If something goes wrong, **Diagnostics > Copy log** in settings has the timings and errors.
+
+## Flow Key: the Copilot key for Wispr Flow
+
+Wispr Flow can't use the Copilot key itself. Flow Key is a Copilot key provider that does nothing
+but press Wispr Flow's own shortcuts, using the same key handling as Dictate:
+
+- **Hold** the Copilot key: Flow Key holds down Wispr's *Push to talk* shortcut (default
+  `Ctrl + Win`) until you let go.
+- **Double tap**: Flow Key presses Wispr's *Hands-free* shortcut (default `Ctrl + Win + Space`);
+  the next tap presses it again to finish.
+
+Wispr Flow does all the listening and typing. Limits:
+
+- Windows only reports a hold after 300 ms, so Wispr starts listening about a third of a second
+  after you press the key. Start talking a beat after pressing.
+- If Wispr Flow runs as administrator, Flow Key (which doesn't) can't reach it.
+- If you change Wispr's shortcuts, pick the same ones in Flow Key's window.
+
+Install: download `flowkey-ARM64` (or `flowkey-x64`) from the latest **build** run, unzip, and run
+`Install-FlowKey.ps1` in an elevated PowerShell. It removes Dictate so only one app claims the
+key. Then choose **Wispr Flow (via Flow Key)** under Settings > Personalization > Text input >
+Customize Copilot key. Flow Key starts with Windows; its window (from Start) shows the log.
 
 ## Why packaging and signing
 
