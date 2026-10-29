@@ -150,10 +150,12 @@ internal static class VirtualKeys
     {
         LShift or RShift => "Shift",
         LControl or RControl => "Ctrl",
-        LMenu or RMenu => "Alt",
+        LMenu => "Alt",
+        RMenu => "Right Alt",
         LWin or RWin => "Win",
         Space => "Space",
         F23 => "F23",
+        >= 0x41 and <= 0x5A => ((char)vk).ToString(),
         _ => $"0x{vk:X2}",
     };
 

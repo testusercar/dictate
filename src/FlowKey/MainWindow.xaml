@@ -56,16 +56,14 @@
                 <!-- Shortcuts -->
                 <TextBlock Text="Wispr Flow shortcuts" Margin="1,24,0,6" Style="{StaticResource BodyStrongTextBlockStyle}" />
 
-                <tk:SettingsCard Header="Push to talk"
-                                 Description="Held down for as long as you hold the Copilot key. Match it to Wispr Flow's Push to talk shortcut.">
+                <tk:SettingsCard x:Name="PushToTalkCard" Header="Push to talk">
                     <tk:SettingsCard.HeaderIcon>
                         <FontIcon Glyph="&#xE720;" />
                     </tk:SettingsCard.HeaderIcon>
                     <ComboBox x:Name="PushToTalkBox" MinWidth="200" SelectionChanged="PushToTalkBox_SelectionChanged" />
                 </tk:SettingsCard>
 
-                <tk:SettingsCard Header="Hands-free"
-                                 Description="Pressed once when you double tap the Copilot key, and again when you tap to finish. Match it to Wispr Flow's Hands-free shortcut.">
+                <tk:SettingsCard x:Name="HandsFreeCard" Header="Hands-free">
                     <tk:SettingsCard.HeaderIcon>
                         <FontIcon Glyph="&#xE7C8;" />
                     </tk:SettingsCard.HeaderIcon>

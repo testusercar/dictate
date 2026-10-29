@@ -39,14 +39,17 @@ public sealed partial class MainWindow : Window
         };
         Activated += (_, e) =>
         {
-            if (e.WindowActivationState != WindowActivationState.Deactivated) ShowKeyRegistration();
+            if (e.WindowActivationState == WindowActivationState.Deactivated) return;
+            ShowKeyRegistration();
+            ShowWisprShortcuts();
         };
 
         _bridge.Sent += line => DispatcherQueue.TryEnqueue(() => StatusText.Text = $"Last sent: {line[6..]}");
 
         LogList.ItemsSource = _log.Lines;
-        Fill(PushToTalkBox, Shortcut.PushToTalkChoices, _settings.PushToTalk);
-        Fill(HandsFreeBox, Shortcut.HandsFreeChoices, _settings.HandsFree);
+        Fill(PushToTalkBox, Shortcut.PushToTalkChoices, _settings.PushToTalkChoice);
+        Fill(HandsFreeBox, Shortcut.HandsFreeChoices, _settings.HandsFreeChoice);
+        ShowWisprShortcuts();
         ShowKeyRegistration();
         _ = LoadStartupStateAsync();
         _loading = false;
@@ -59,25 +62,38 @@ public sealed partial class MainWindow : Window
         Activate();
     }
 
-    private static void Fill(ComboBox box, Shortcut[] choices, Shortcut selected)
+    private static void Fill(ComboBox box, Shortcut[] choices, string selected)
     {
+        box.Items.Add(new ComboBoxItem { Content = "Same as Wispr Flow", Tag = Shortcut.MatchWispr });
         foreach (var s in choices)
-            box.Items.Add(new ComboBoxItem { Content = s.Name, Tag = s });
-        box.SelectedIndex = Array.IndexOf(choices, selected);
+            box.Items.Add(new ComboBoxItem { Content = s.Name, Tag = s.Id });
+        box.SelectedIndex = Math.Max(0, Array.FindIndex(choices, c => c.Id == selected) + 1);
+    }
+
+    // What "Same as Wispr Flow" resolves to right now.
+    private void ShowWisprShortcuts()
+    {
+        var (ptt, handsFree) = WisprConfig.Read();
+        PushToTalkCard.Description = ptt is null
+            ? "Held down while you hold the Copilot key. Wispr Flow's setting couldn't be read, so pick the same shortcut as its Push to talk."
+            : $"Held down while you hold the Copilot key. Wispr Flow's Push to talk is {ptt.Name}.";
+        HandsFreeCard.Description = handsFree is null
+            ? "Pressed when you double tap, and again when you tap to finish. Wispr Flow's setting couldn't be read, so pick the same shortcut as its Hands-free."
+            : $"Pressed when you double tap, and again when you tap to finish. Wispr Flow's Hands-free is {handsFree.Name}.";
     }
 
     private void PushToTalkBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_loading || PushToTalkBox.SelectedItem is not ComboBoxItem { Tag: Shortcut s }) return;
-        _settings.PushToTalk = s;
-        _log.Write($"push to talk is now {s.Name}");
+        if (_loading || PushToTalkBox.SelectedItem is not ComboBoxItem { Tag: string id }) return;
+        _settings.PushToTalkChoice = id;
+        _log.Write($"push to talk is now {_settings.PushToTalk.Name}");
     }
 
     private void HandsFreeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_loading || HandsFreeBox.SelectedItem is not ComboBoxItem { Tag: Shortcut s }) return;
-        _settings.HandsFree = s;
-        _log.Write($"hands-free is now {s.Name}");
+        if (_loading || HandsFreeBox.SelectedItem is not ComboBoxItem { Tag: string id }) return;
+        _settings.HandsFreeChoice = id;
+        _log.Write($"hands-free is now {_settings.HandsFree.Name}");
     }
 
     private void ShowKeyRegistration()

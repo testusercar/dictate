@@ -67,9 +67,9 @@ certificate (`CN=Dictate Dev`) the first time, builds the MSIX, and installs it.
 Wispr Flow can't use the Copilot key itself. Flow Key is a Copilot key provider that does nothing
 but press Wispr Flow's own shortcuts, using the same key handling as Dictate:
 
-- **Hold** the Copilot key: Flow Key holds down Wispr's *Push to talk* shortcut (default
-  `Ctrl + Win`) until you let go.
-- **Double tap**: Flow Key presses Wispr's *Hands-free* shortcut (default `Ctrl + Win + Space`);
+- **Hold** the Copilot key: Flow Key holds down Wispr's *Push to talk* shortcut (for example
+  `Ctrl + Win` or `Right Alt`) until you let go.
+- **Double tap**: Flow Key presses Wispr's *Hands-free* shortcut (for example `Ctrl + Win + Space`);
   the next tap presses it again to finish.
 
 Wispr Flow does all the listening and typing. Limits:
@@ -77,7 +77,8 @@ Wispr Flow does all the listening and typing. Limits:
 - Windows only reports a hold after 300 ms, so Wispr starts listening about a third of a second
   after you press the key. Start talking a beat after pressing.
 - If Wispr Flow runs as administrator, Flow Key (which doesn't) can't reach it.
-- If you change Wispr's shortcuts, pick the same ones in Flow Key's window.
+- Flow Key reads Wispr's shortcuts from `%APPDATA%\Wispr Flow\config.json` (read only), so it
+  follows them when you change them in Wispr. If that ever fails, pick them in Flow Key's window.
 
 Install: download `flowkey-ARM64` (or `flowkey-x64`) from the latest **build** run, unzip, and run
 `Install-FlowKey.ps1` in an elevated PowerShell. It removes Dictate so only one app claims the
