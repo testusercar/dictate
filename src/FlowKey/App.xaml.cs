@@ -1,3 +1,4 @@
+using Dictate.Core;
 using System.Web;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
