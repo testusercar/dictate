@@ -25,6 +25,9 @@ public partial class App : Application
         _bridge = new WisprBridge(settings, _log);
         _window = new MainWindow(_bridge, settings, _log);
         _log.Write($"Flow Key {Windows.ApplicationModel.Package.Current.Id.Version.ToText()} started");
+        var (ptt, handsFree) = WisprConfig.Read();
+        _log.Write($"wispr push to talk {ptt?.Name ?? "unreadable"}, hands-free {handsFree?.Name ?? "unreadable"}; " +
+                   $"sending {settings.PushToTalk.Name} and {settings.HandsFree.Name}");
 
         var current = AppInstance.GetCurrent();
         current.Activated += (_, a) => _window.DispatcherQueue.TryEnqueue(() => HandleActivation(a, redirected: true));

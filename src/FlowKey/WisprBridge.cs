@@ -10,8 +10,8 @@ namespace FlowKey;
 /// </summary>
 internal sealed class WisprBridge : IDisposable
 {
-    // A safety net in case Windows never reports the release: nothing stays held down forever.
-    private static readonly TimeSpan MaxHold = TimeSpan.FromMinutes(10);
+    // A safety net in case Windows never reports the release: nothing stays held down for long.
+    private static readonly TimeSpan MaxHold = TimeSpan.FromMinutes(3);
 
     // Keys the Copilot key itself is made of (Win + Shift + F23). If Windows still reports one of
     // them down, Wispr would see it as part of the shortcut and not match, so it is let go first.
@@ -44,6 +44,14 @@ internal sealed class WisprBridge : IDisposable
         _lastKey = now;
         _log.Write($"key   {e,-9} {source,-12} {gap}");
         if (e == KeyEvent.HoldStart) ReportHeldKeys();
+
+        // A new press while still holding means Windows never sent the release: let go first, so
+        // the shortcut isn't left down and this press starts afresh.
+        if (_machine.State == DictationState.PushToTalk && e is KeyEvent.Tap or KeyEvent.HoldStart)
+        {
+            _log.Write("missed the last release; letting go first");
+            _machine.Handle(KeyEvent.Cancel);
+        }
         _machine.Handle(e);
     }
 
@@ -108,6 +116,8 @@ internal sealed class WisprBridge : IDisposable
     private void OnMaxHold()
     {
         _log.Write($"no release after {MaxHold.TotalMinutes:0} minutes; letting go");
+        // Cancel ends hands-free too, which would press its shortcut; only a hold needs ending here.
+        if (_machine.State != DictationState.PushToTalk) return;
         _machine.Handle(KeyEvent.Cancel);
     }
 

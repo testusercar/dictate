@@ -101,17 +101,19 @@ internal static class WisprConfig
         }
     }
 
-    // A binding is a list of keys, or a list of alternative key lists. Takes the first that is all
-    // keyboard keys (Wispr also has codes of its own for mouse buttons, which can't be sent).
+    // splitKeybinds is a list of { "shortcut": [codes], "value": "ptt" } entries, and an action can
+    // have several. Takes the first that is all keyboard keys (Wispr also has codes of its own for
+    // mouse buttons, which can't be sent).
     private static Shortcut? Combo(JsonElement binds, string name, string id)
     {
-        if (!binds.TryGetProperty(name, out var bind) || bind.ValueKind != JsonValueKind.Array) return null;
-        var alternatives = bind.EnumerateArray().Any(e => e.ValueKind == JsonValueKind.Array)
-            ? bind.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Array).ToArray()
-            : new[] { bind };
-        foreach (var alt in alternatives)
+        if (binds.ValueKind != JsonValueKind.Array) return null;
+        foreach (var bind in binds.EnumerateArray())
         {
-            var codes = alt.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Number).Select(e => e.GetInt32()).ToArray();
+            if (bind.ValueKind != JsonValueKind.Object
+                || !bind.TryGetProperty("value", out var value) || value.ValueKind != JsonValueKind.String || value.GetString() != name
+                || !bind.TryGetProperty("shortcut", out var keys) || keys.ValueKind != JsonValueKind.Array)
+                continue;
+            var codes = keys.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Number).Select(e => e.GetInt32()).ToArray();
             if (codes.Length is > 0 and <= 3 && codes.All(c => c is > 0 and < 0xFF))
                 return new Shortcut(id, codes.Select(c => (ushort)c).ToArray());
         }
