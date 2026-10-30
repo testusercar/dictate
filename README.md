@@ -76,6 +76,10 @@ is a Copilot key provider that does one thing: open the app you pick.
 - If the app already has a window open, the launcher puts it in front directly instead of
   starting the app again (an Electron app's hand-over to its running instance is slow). Otherwise
   it opens it through `shell:AppsFolder`, the way Start does.
+- **Put the cursor in its text box** (on by default): once the app is in front, UI Automation
+  moves the focus to its text box (Grok Bot's *Prompt*; otherwise one named like a chat input, or
+  the lowest on screen). It only moves the focus, never clicks or types, and gives up after
+  0.3 s for an open window or 8 s for an app that is still starting.
 - If the resident instance isn't running, Windows launches a `flowkey://` link instead: the app
   still opens without any window in between, just a little later, and that instance stays on for
   the next press.

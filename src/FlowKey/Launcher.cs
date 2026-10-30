@@ -47,6 +47,17 @@ internal static class Launcher
         }
     }
 
+    /// <summary>Whether to put the cursor in the app's text box once it's in front. On by default.</summary>
+    public static bool FocusTextBox
+    {
+        get => !Values.TryGetValue("FocusTextBox", out var v) || v is not bool on || on;
+        set => Values["FocusTextBox"] = value;
+    }
+
+    // How long to look for the text box: an open window has it already, a starting app shows it late.
+    private static readonly TimeSpan FocusPatienceOpen = TimeSpan.FromMilliseconds(300);
+    private static readonly TimeSpan FocusPatienceStarting = TimeSpan.FromSeconds(8);
+
     /// <summary>The chosen app, or the default one (saved as the choice) if it is installed.</summary>
     public static LaunchTarget? TargetOrDefault(IReadOnlyList<LaunchTarget>? startApps = null)
     {
@@ -111,12 +122,32 @@ internal static class Launcher
         }
     }
 
-    /// <summary>Brings the app's open window to the front, or opens it the way Start does. Says which it did.</summary>
+    /// <summary>
+    /// Brings the app's open window to the front, or opens it the way Start does, then (if that's on)
+    /// puts the cursor in its text box in the background. Says which it did; the text box result is logged.
+    /// </summary>
     public static string Open(LaunchTarget target)
     {
+        var how = OpenWindow(target, out var started);
+        if (FocusTextBox)
+        {
+            var clock = Stopwatch.StartNew();
+            Task.Run(() =>
+            {
+                var result = TextBoxFocus.Focus(() => WindowFocus.Find(target), started ? FocusPatienceStarting : FocusPatienceOpen);
+                Log.Write($"focus {target.Name}: {result} ({clock.ElapsedMilliseconds} ms after it was {(started ? "started" : "in front")})");
+            });
+        }
+        return how;
+    }
+
+    private static string OpenWindow(LaunchTarget target, out bool started)
+    {
+        started = false;
         var window = WindowFocus.Find(target);
         if (window != IntPtr.Zero)
             return WindowFocus.Bring(window) ? "brought back" : "couldn't bring back (Windows refused)";
+        started = true;
 
         // Lets the app, or the running instance it hands over to, come to the front.
         AllowSetForegroundWindow(ASFW_ANY);

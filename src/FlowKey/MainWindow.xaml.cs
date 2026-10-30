@@ -31,6 +31,7 @@ public sealed partial class MainWindow : Window
         ShowTarget(Launcher.Target);
         ShowKeyRegistration();
         ShowLog();
+        FocusSwitch.IsOn = Launcher.FocusTextBox;
         _ = LoadStartupStateAsync();
         _ = EnsureResidentAsync();
         // Listing the Start menu takes a moment; let the window paint first.
@@ -120,6 +121,13 @@ public sealed partial class MainWindow : Window
         Log.Write($"the Copilot key now opens {target.Name} ({target.AppId})");
         ShowTarget(target);
         ShowLog();
+    }
+
+    private void FocusSwitch_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (Launcher.FocusTextBox == FocusSwitch.IsOn) return;
+        Launcher.FocusTextBox = FocusSwitch.IsOn;
+        Log.Write($"put the cursor in the text box: {(FocusSwitch.IsOn ? "on" : "off")}");
     }
 
     private void ShowTarget(LaunchTarget? target)

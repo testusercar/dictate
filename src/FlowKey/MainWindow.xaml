@@ -65,6 +65,14 @@
                               IsEnabled="False" SelectionChanged="AppBox_SelectionChanged" />
                 </tk:SettingsCard>
 
+                <tk:SettingsCard Header="Put the cursor in its text box"
+                                 Description="Once the app is in front, move the focus to its text box (Grok Bot's prompt) so you can start typing. Only moves the focus; never clicks or types.">
+                    <tk:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE8D2;" />
+                    </tk:SettingsCard.HeaderIcon>
+                    <ToggleSwitch x:Name="FocusSwitch" Toggled="FocusSwitch_Toggled" />
+                </tk:SettingsCard>
+
                 <tk:SettingsCard Header="Try it" Description="Opens the app now, the same way the Copilot key does.">
                     <tk:SettingsCard.HeaderIcon>
                         <FontIcon Glyph="&#xE768;" />
