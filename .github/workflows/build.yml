@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         platform: [x64, ARM64]
-        # Dictate is the full app; Flow Key is the small helper that drives Wispr Flow from the Copilot key.
+        # Dictate is the full app; FlowKey is the Copilot Key Launcher, a small helper that opens a chosen app.
         project: [Dictate, FlowKey]
     steps:
       - uses: actions/checkout@v4

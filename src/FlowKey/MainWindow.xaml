@@ -4,7 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:tk="using:CommunityToolkit.WinUI.Controls"
-    Title="Flow Key">
+    Title="Copilot Key Launcher">
 
     <Window.SystemBackdrop>
         <MicaBackdrop />
@@ -23,14 +23,14 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <Image Source="Assets/Square44x44Logo.png" Width="16" Height="16" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="1" Text="Flow Key" VerticalAlignment="Center"
+            <TextBlock Grid.Column="1" Text="Copilot Key Launcher" VerticalAlignment="Center"
                        Style="{StaticResource CaptionTextBlockStyle}" />
         </Grid>
 
         <ScrollViewer Grid.Row="1">
             <StackPanel MaxWidth="1000" Padding="36,8,36,36" Spacing="4" HorizontalAlignment="Stretch">
 
-                <TextBlock Text="Flow Key" Margin="0,0,0,16" Style="{StaticResource TitleTextBlockStyle}" />
+                <TextBlock Text="Copilot Key Launcher" Margin="0,0,0,16" Style="{StaticResource TitleTextBlockStyle}" />
 
                 <Border Padding="20" Margin="0,0,0,8" CornerRadius="{StaticResource OverlayCornerRadius}"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -43,8 +43,8 @@
                         <FontIcon Glyph="&#xE765;" FontSize="32" VerticalAlignment="Center"
                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                         <StackPanel Grid.Column="1" Spacing="2">
-                            <TextBlock x:Name="StatusText" Text="Ready" Style="{StaticResource SubtitleTextBlockStyle}" />
-                            <TextBlock Text="Hold the Copilot key to talk to Wispr Flow, then let go. Double tap it for hands-free and tap again to finish. Flow Key only presses Wispr Flow's shortcuts; Wispr Flow does the listening and typing."
+                            <TextBlock x:Name="StatusText" Text="No app chosen" Style="{StaticResource SubtitleTextBlockStyle}" />
+                            <TextBlock Text="Press the Copilot key to open the app you choose here, or bring it back if it's already open. Nothing else shows up in between: the launcher starts, opens the app and exits."
                                        Style="{StaticResource BodyTextBlockStyle}" TextWrapping="Wrap"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         </StackPanel>
@@ -53,28 +53,30 @@
 
                 <InfoBar x:Name="KeyBar" IsClosable="False" />
 
-                <!-- Shortcuts -->
-                <TextBlock Text="Wispr Flow shortcuts" Margin="1,24,0,6" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                <!-- App -->
+                <TextBlock Text="App" Margin="1,24,0,6" Style="{StaticResource BodyStrongTextBlockStyle}" />
 
-                <tk:SettingsCard x:Name="PushToTalkCard" Header="Push to talk">
+                <tk:SettingsCard Header="Open with the Copilot key"
+                                 Description="Any app in the Start menu's All apps list.">
                     <tk:SettingsCard.HeaderIcon>
-                        <FontIcon Glyph="&#xE720;" />
+                        <FontIcon Glyph="&#xE8A9;" />
                     </tk:SettingsCard.HeaderIcon>
-                    <ComboBox x:Name="PushToTalkBox" MinWidth="200" SelectionChanged="PushToTalkBox_SelectionChanged" />
+                    <ComboBox x:Name="AppBox" MinWidth="260" PlaceholderText="Loading apps..."
+                              IsEnabled="False" SelectionChanged="AppBox_SelectionChanged" />
                 </tk:SettingsCard>
 
-                <tk:SettingsCard x:Name="HandsFreeCard" Header="Hands-free">
+                <tk:SettingsCard Header="Try it" Description="Opens the app now, the same way the Copilot key does.">
                     <tk:SettingsCard.HeaderIcon>
-                        <FontIcon Glyph="&#xE7C8;" />
+                        <FontIcon Glyph="&#xE768;" />
                     </tk:SettingsCard.HeaderIcon>
-                    <ComboBox x:Name="HandsFreeBox" MinWidth="200" SelectionChanged="HandsFreeBox_SelectionChanged" />
+                    <Button x:Name="OpenButton" Content="Open" Click="Open_Click" />
                 </tk:SettingsCard>
 
                 <!-- Copilot key -->
                 <TextBlock Text="Copilot key" Margin="1,24,0,6" Style="{StaticResource BodyStrongTextBlockStyle}" />
 
                 <tk:SettingsCard x:Name="CopilotKeyCard" Header="Customize Copilot key"
-                                 Description="Choose Wispr Flow (via Flow Key) under Personalization > Text input."
+                                 Description="Choose Copilot Key Launcher under Personalization > Text input."
                                  IsClickEnabled="True" Click="CopilotKeySettings_Click">
                     <tk:SettingsCard.HeaderIcon>
                         <FontIcon Glyph="&#xE765;" />
@@ -87,15 +89,8 @@
                 <!-- General -->
                 <TextBlock Text="General" Margin="1,24,0,6" Style="{StaticResource BodyStrongTextBlockStyle}" />
 
-                <tk:SettingsCard Header="Start with Windows"
-                                 Description="Run Flow Key in the background when you sign in. The Copilot key only reaches Wispr Flow while Flow Key runs.">
-                    <tk:SettingsCard.HeaderIcon>
-                        <FontIcon Glyph="&#xE768;" />
-                    </tk:SettingsCard.HeaderIcon>
-                    <ToggleSwitch x:Name="StartupSwitch" Toggled="StartupSwitch_Toggled" />
-                </tk:SettingsCard>
-
-                <tk:SettingsExpander Header="Diagnostics" Description="Key presses and the shortcuts sent, with timings.">
+                <tk:SettingsExpander x:Name="DiagnosticsExpander" Header="Diagnostics"
+                                     Description="Each Copilot key press, what it opened and how long that took.">
                     <tk:SettingsExpander.HeaderIcon>
                         <FontIcon Glyph="&#xE9D9;" />
                     </tk:SettingsExpander.HeaderIcon>
@@ -112,14 +107,6 @@
                         </tk:SettingsCard>
                     </tk:SettingsExpander.Items>
                 </tk:SettingsExpander>
-
-                <tk:SettingsCard Header="Quit Flow Key"
-                                 Description="Closing this window keeps Flow Key running for the Copilot key. Quit stops it until you open it again.">
-                    <tk:SettingsCard.HeaderIcon>
-                        <FontIcon Glyph="&#xE7E8;" />
-                    </tk:SettingsCard.HeaderIcon>
-                    <Button Content="Quit" Click="Quit_Click" />
-                </tk:SettingsCard>
             </StackPanel>
         </ScrollViewer>
     </Grid>

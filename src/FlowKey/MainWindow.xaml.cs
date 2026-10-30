@@ -1,61 +1,35 @@
-using Dictate.Core;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Win32;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.DataTransfer;
-using Windows.System;
 
 namespace FlowKey;
 
-/// <summary>Settings and status. Closing it only hides it: the app keeps listening for the Copilot key.</summary>
+/// <summary>Picks the app the Copilot key opens. Closing it quits; the key works without it.</summary>
 public sealed partial class MainWindow : Window
 {
-    private const string StartupTaskId = "FlowKeyStartup";
-
-    private readonly WisprBridge _bridge;
-    private readonly FlowSettings _settings;
-    private readonly Log _log;
-    private readonly CopilotKeyFastPath _fastPath;
-    private readonly IDisposable _hook;
     private bool _loading = true;
 
-    internal MainWindow(WisprBridge bridge, FlowSettings settings, Log log, Action<KeyEvent, string> onWindowsKey, IDisposable hook)
+    public MainWindow()
     {
-        _hook = hook;
-        _bridge = bridge;
-        _settings = settings;
-        _log = log;
         InitializeComponent();
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
-        AppWindow.Resize(new Windows.Graphics.SizeInt32(860, 760));
+        AppWindow.Resize(new Windows.Graphics.SizeInt32(860, 700));
 
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-        _fastPath = new CopilotKeyFastPath(hwnd, e => onWindowsKey(e, "fast path"));
-
-        // Hide instead of closing: the window carries the Copilot key fast path.
-        AppWindow.Closing += (_, e) =>
-        {
-            e.Cancel = true;
-            AppWindow.Hide();
-        };
         Activated += (_, e) =>
         {
             if (e.WindowActivationState == WindowActivationState.Deactivated) return;
             ShowKeyRegistration();
-            ShowWisprShortcuts();
+            ShowLog();
         };
 
-        _bridge.Sent += line => DispatcherQueue.TryEnqueue(() => StatusText.Text = $"Last sent: {line[6..]}");
-
-        LogList.ItemsSource = _log.Lines;
-        Fill(PushToTalkBox, Shortcut.PushToTalkChoices, _settings.PushToTalkChoice);
-        Fill(HandsFreeBox, Shortcut.HandsFreeChoices, _settings.HandsFreeChoice);
-        ShowWisprShortcuts();
+        ShowTarget(Launcher.Target);
         ShowKeyRegistration();
-        _ = LoadStartupStateAsync();
-        _loading = false;
+        ShowLog();
+        // Listing the Start menu takes a moment; let the window paint first.
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, LoadApps);
     }
 
     /// <summary>Shows the window and brings it to the front.</summary>
@@ -65,38 +39,65 @@ public sealed partial class MainWindow : Window
         Activate();
     }
 
-    private static void Fill(ComboBox box, Shortcut[] choices, string selected)
+    private void LoadApps()
     {
-        box.Items.Add(new ComboBoxItem { Content = "Same as Wispr Flow", Tag = Shortcut.MatchWispr });
-        foreach (var s in choices)
-            box.Items.Add(new ComboBoxItem { Content = s.Name, Tag = s.Id });
-        box.SelectedIndex = Math.Max(0, Array.FindIndex(choices, c => c.Id == selected) + 1);
+        IReadOnlyList<LaunchTarget> apps;
+        try
+        {
+            apps = StartApps.List();
+        }
+        catch (Exception e)
+        {
+            AppBox.PlaceholderText = "Couldn't list apps";
+            Log.Write($"error listing Start apps: {e.Message}");
+            return;
+        }
+
+        var target = Launcher.TargetOrDefault(apps);
+        AppBox.Items.Clear();
+        foreach (var app in apps)
+            AppBox.Items.Add(new ComboBoxItem { Content = app.Name, Tag = app });
+
+        // Keep a chosen app that has since left the Start menu visible, so the choice isn't silently lost.
+        if (target is not null && !apps.Any(a => string.Equals(a.AppId, target.AppId, StringComparison.OrdinalIgnoreCase)))
+            AppBox.Items.Insert(0, new ComboBoxItem { Content = $"{target.Name} (not in Start)", Tag = target });
+
+        AppBox.SelectedItem = AppBox.Items.Cast<ComboBoxItem>()
+            .FirstOrDefault(i => i.Tag is LaunchTarget t && string.Equals(t.AppId, target?.AppId, StringComparison.OrdinalIgnoreCase));
+        AppBox.PlaceholderText = "Choose an app";
+        AppBox.IsEnabled = true;
+        ShowTarget(target);
+        _loading = false;
     }
 
-    // What "Same as Wispr Flow" resolves to right now.
-    private void ShowWisprShortcuts()
+    private void AppBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        var (ptt, handsFree) = WisprConfig.Read();
-        PushToTalkCard.Description = ptt is null
-            ? "Held down while you hold the Copilot key. Wispr Flow's setting couldn't be read, so pick the same shortcut as its Push to talk."
-            : $"Held down while you hold the Copilot key. Wispr Flow's Push to talk is {ptt.Name}.";
-        HandsFreeCard.Description = handsFree is null
-            ? "Pressed when you double tap, and again when you tap to finish. Wispr Flow's setting couldn't be read, so pick the same shortcut as its Hands-free."
-            : $"Pressed when you double tap, and again when you tap to finish. Wispr Flow's Hands-free is {handsFree.Name}.";
+        if (_loading || AppBox.SelectedItem is not ComboBoxItem { Tag: LaunchTarget target }) return;
+        Launcher.Target = target;
+        Log.Write($"the Copilot key now opens {target.Name} ({target.AppId})");
+        ShowTarget(target);
+        ShowLog();
     }
 
-    private void PushToTalkBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void ShowTarget(LaunchTarget? target)
     {
-        if (_loading || PushToTalkBox.SelectedItem is not ComboBoxItem { Tag: string id }) return;
-        _settings.PushToTalkChoice = id;
-        _log.Write($"push to talk is now {_settings.PushToTalk.Name}");
+        StatusText.Text = target is null ? "No app chosen" : $"Opens {target.Name}";
+        OpenButton.IsEnabled = target is not null;
     }
 
-    private void HandsFreeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void Open_Click(object sender, RoutedEventArgs e)
     {
-        if (_loading || HandsFreeBox.SelectedItem is not ComboBoxItem { Tag: string id }) return;
-        _settings.HandsFreeChoice = id;
-        _log.Write($"hands-free is now {_settings.HandsFree.Name}");
+        if (Launcher.Target is not { } target) return;
+        try
+        {
+            Launcher.Open(target);
+            Log.Write($"opened {target.Name} from the window");
+        }
+        catch (Exception ex)
+        {
+            Log.Write($"error {ex.Message}");
+        }
+        ShowLog();
     }
 
     private void ShowKeyRegistration()
@@ -123,58 +124,22 @@ public sealed partial class MainWindow : Window
 
         KeyBar.IsOpen = !ours;
         KeyBar.Severity = InfoBarSeverity.Warning;
-        KeyBar.Title = "The Copilot key isn't set to Flow Key";
-        KeyBar.Message = "Open Customize Copilot key below and choose Wispr Flow (via Flow Key).";
+        KeyBar.Title = "The Copilot key isn't set to the launcher";
+        KeyBar.Message = "Open Customize Copilot key below and choose Copilot Key Launcher.";
         CopilotKeyCard.Description = ours
-            ? "Flow Key owns the Copilot key."
-            : "Choose Wispr Flow (via Flow Key) under Personalization > Text input.";
+            ? "The launcher owns the Copilot key."
+            : "Choose Copilot Key Launcher under Personalization > Text input.";
     }
 
-    private async Task LoadStartupStateAsync()
-    {
-        try
-        {
-            var task = await StartupTask.GetAsync(StartupTaskId);
-            _loading = true;
-            StartupSwitch.IsOn = task.State is StartupTaskState.Enabled or StartupTaskState.EnabledByPolicy;
-            StartupSwitch.IsEnabled = task.State is not (StartupTaskState.DisabledByPolicy or StartupTaskState.EnabledByPolicy);
-        }
-        catch (Exception)
-        {
-            StartupSwitch.IsEnabled = false;
-        }
-        finally
-        {
-            _loading = false;
-        }
-    }
-
-    private async void StartupSwitch_Toggled(object sender, RoutedEventArgs e)
-    {
-        if (_loading) return;
-        var task = await StartupTask.GetAsync(StartupTaskId);
-        if (StartupSwitch.IsOn)
-            await task.RequestEnableAsync();
-        else
-            task.Disable();
-        await LoadStartupStateAsync();
-    }
+    private void ShowLog() => LogList.ItemsSource = Log.Tail(300);
 
     private async void CopilotKeySettings_Click(object sender, RoutedEventArgs e) =>
-        await Launcher.LaunchUriAsync(new Uri("ms-settings:personalization-textinput"));
+        await Windows.System.Launcher.LaunchUriAsync(new Uri("ms-settings:personalization-textinput"));
 
     private void CopyLog_Click(object sender, RoutedEventArgs e)
     {
         var package = new DataPackage();
-        package.SetText(string.Join(Environment.NewLine, _log.Lines.Reverse()));
+        package.SetText(string.Join(Environment.NewLine, Log.Tail(300).Reverse()));
         Clipboard.SetContent(package);
-    }
-
-    private void Quit_Click(object sender, RoutedEventArgs e)
-    {
-        _hook.Dispose();
-        _fastPath.Dispose();
-        _bridge.Dispose();
-        Application.Current.Exit();
     }
 }

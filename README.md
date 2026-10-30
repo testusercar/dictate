@@ -13,7 +13,7 @@ Design doc: https://claude.ai/artifact/XkkRPGspyZsoPMQ8oK2HX8
 | `src/Dictate.Core` | Platform-free logic: the Copilot key state machine, the Grok streaming transcriber (`wss://api.x.ai/v1/stt`), the pre-roll buffer and the dictation session controller. |
 | `tests/Dictate.Core.Tests` | Unit tests for all of the above (run anywhere with `dotnet test`). |
 | `src/Dictate` | The packaged WinUI 3 app: Copilot key provider, microphone capture, typing into the focused app, the recording pill and the settings window. |
-| `src/FlowKey` | **Flow Key**, a small helper that gives the Copilot key to Wispr Flow instead (see below). |
+| `src/FlowKey` | **Copilot Key Launcher** (package `FlowKey`), a small helper that makes the Copilot key open any app you choose (see below). |
 
 ## How it works
 
@@ -62,30 +62,27 @@ certificate (`CN=Dictate Dev`) the first time, builds the MSIX, and installs it.
 - Text can't be typed into apps running as administrator (a Windows rule).
 - If something goes wrong, **Diagnostics > Copy log** in settings has the timings and errors.
 
-## Flow Key: the Copilot key for Wispr Flow
+## Copilot Key Launcher: the Copilot key for any app
 
-Wispr Flow can't use the Copilot key itself. Flow Key is a Copilot key provider that does nothing
-but press Wispr Flow's own shortcuts, using the same key handling as Dictate:
+Windows only lets packaged, signed apps take the Copilot key, so most desktop apps (Grok Bot,
+Electron apps, anything installed from an .exe) can't be chosen in Settings. Copilot Key Launcher
+is a Copilot key provider that does one thing: open the app you pick.
 
-- **Hold** the Copilot key: Flow Key holds down Wispr's *Push to talk* shortcut (for example
-  `Ctrl + Win` or `Right Alt`) until you let go.
-- **Double tap**: Flow Key presses Wispr's *Hands-free* shortcut (for example `Ctrl + Win + Space`);
-  the next tap presses it again to finish.
+- Press (tap or hold) the Copilot key: the chosen app opens, or comes back to the front if it's
+  already running. Letting go of a hold does nothing.
+- Nothing shows up in between. Windows starts the launcher with a `flowkey://` link; it opens the
+  app through `shell:AppsFolder` the way Start does and exits before creating any window. It
+  doesn't run in the background, so there is nothing to keep alive.
+- Open **Copilot Key Launcher** from Start to choose the app from the All apps list (it defaults to
+  Grok Bot if that's installed) and to see the log of presses and timings.
 
-Wispr Flow does all the listening and typing. Limits:
-
-- Flow Key reads the key itself with a keyboard hook (as PowerToys does to remap it), because
-  Windows' own Copilot key events keep Win + Shift + F23 held down, which Wispr won't match. A
-  press counts as a hold after 250 ms, so start talking a beat after pressing. Windows' events are
-  only used for the press that launches Flow Key.
-- If Wispr Flow runs as administrator, Flow Key (which doesn't) can't reach it.
-- Flow Key reads Wispr's shortcuts from `%APPDATA%\Wispr Flow\config.json` (read only), so it
-  follows them when you change them in Wispr. If that ever fails, pick them in Flow Key's window.
+The package is still named `FlowKey` (it began as a helper that drove Wispr Flow's shortcuts), so a
+Copilot key setting made for Flow Key keeps pointing at it.
 
 Install: download `flowkey-ARM64` (or `flowkey-x64`) from the latest **build** run, unzip, and run
 `Install-FlowKey.ps1` in an elevated PowerShell. It removes Dictate so only one app claims the
-key. Then choose **Wispr Flow (via Flow Key)** under Settings > Personalization > Text input >
-Customize Copilot key. Flow Key starts with Windows; its window (from Start) shows the log.
+key. Then choose **Copilot Key Launcher** under Settings > Personalization > Text input >
+Customize Copilot key.
 
 ## Why packaging and signing
 

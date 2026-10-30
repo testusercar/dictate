@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Installs the Flow Key MSIX from a CI build artifact.
+  Installs the Copilot Key Launcher (package FlowKey) MSIX from a CI build artifact.
 .DESCRIPTION
   Run from the unzipped artifact folder in an elevated PowerShell (needed to trust the signing
   certificate). Each CI run signs with a fresh throwaway certificate, so re-run this script for
@@ -44,5 +44,5 @@ Write-Host "Installing $($msix.Name)"
 Add-AppxPackage -Path $msix.FullName -ForceUpdateFromAnyVersion
 
 Write-Host ""
-Write-Host "Done. Set Settings > Personalization > Text input > Customize Copilot key to"
-Write-Host "'Wispr Flow (via Flow Key)', and check that Flow Key's shortcuts match Wispr Flow's."
+Write-Host "Done. Open Copilot Key Launcher from Start to choose the app the key opens, and make sure"
+Write-Host "Settings > Personalization > Text input > Customize Copilot key is set to 'Copilot Key Launcher'."

@@ -6,8 +6,9 @@ using Microsoft.Windows.AppLifecycle;
 namespace FlowKey;
 
 /// <summary>
-/// Custom entry point so that every Copilot key URI launch lands in one running instance
-/// instead of starting a new window per key press.
+/// Custom entry point. A Copilot key press arrives as a flowkey:// launch: it opens the chosen app
+/// and exits before any XAML or window exists, so nothing flashes up in between. Any other launch
+/// (from Start) opens the settings window, in one instance.
 /// </summary>
 public static class Program
 {
@@ -16,10 +17,17 @@ public static class Program
     {
         WinRT.ComWrappersSupport.InitializeComWrappers();
 
+        var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
+        if (activation.Kind is ExtendedActivationKind.Protocol or ExtendedActivationKind.ProtocolForResults)
+        {
+            Launcher.HandleKey(activation);
+            return 0;
+        }
+
         var main = AppInstance.FindOrRegisterForKey("flowkey-main");
         if (!main.IsCurrent)
         {
-            RedirectAndWait(main, AppInstance.GetCurrent().GetActivatedEventArgs());
+            RedirectAndWait(main, activation);
             return 0;
         }
 
