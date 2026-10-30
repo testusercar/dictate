@@ -41,6 +41,32 @@ internal static class StartApps
             .ToList();
     }
 
+    /// <summary>The program a desktop app's Start shortcut points to, or null (packaged apps have none).</summary>
+    public static string? TargetPath(string appId)
+    {
+        var type = Type.GetTypeFromProgID("Shell.Application");
+        if (type is null) return null;
+        dynamic shell = Activator.CreateInstance(type)!;
+        try
+        {
+            dynamic items = shell.NameSpace(AppsFolder).Items();
+            int count = items.Count;
+            for (var i = 0; i < count; i++)
+            {
+                dynamic item = items.Item(i);
+                string? id = item.Path;
+                if (!string.Equals(id, appId, StringComparison.OrdinalIgnoreCase)) continue;
+                string? path = item.ExtendedProperty("System.Link.TargetParsingPath") as string;
+                return string.IsNullOrWhiteSpace(path) || !File.Exists(path) ? null : path;
+            }
+            return null;
+        }
+        finally
+        {
+            Marshal.FinalReleaseComObject(shell);
+        }
+    }
+
     private static string? SelfAppId()
     {
         try

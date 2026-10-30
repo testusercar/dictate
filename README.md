@@ -68,11 +68,17 @@ Windows only lets packaged, signed apps take the Copilot key, so most desktop ap
 Electron apps, anything installed from an .exe) can't be chosen in Settings. Copilot Key Launcher
 is a Copilot key provider that does one thing: open the app you pick.
 
-- Press (tap or hold) the Copilot key: the chosen app opens, or comes back to the front if it's
-  already running. Letting go of a hold does nothing.
-- Nothing shows up in between. Windows starts the launcher with a `flowkey://` link; it opens the
-  app through `shell:AppsFolder` the way Start does and exits before creating any window. It
-  doesn't run in the background, so there is nothing to keep alive.
+- Press the Copilot key: the chosen app opens, or comes back to the front if it's already open.
+- Nothing shows up in between, and it's quick. A small resident instance with no XAML and no
+  visible window runs from sign-in. Its keyboard hook acts the moment the key goes down (the key
+  arrives as Win + Shift + F23; the hook swallows F23 and lets go of Win and Shift without opening
+  Start), rather than waiting for Windows to tell a tap from a hold on release.
+- If the app already has a window open, the launcher puts it in front directly instead of
+  starting the app again (an Electron app's hand-over to its running instance is slow). Otherwise
+  it opens it through `shell:AppsFolder`, the way Start does.
+- If the resident instance isn't running, Windows launches a `flowkey://` link instead: the app
+  still opens without any window in between, just a little later, and that instance stays on for
+  the next press.
 - Open **Copilot Key Launcher** from Start to choose the app from the All apps list (it defaults to
   Grok Bot if that's installed) and to see the log of presses and timings.
 

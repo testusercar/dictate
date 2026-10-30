@@ -6,10 +6,13 @@ using Windows.ApplicationModel.DataTransfer;
 
 namespace FlowKey;
 
-/// <summary>Picks the app the Copilot key opens. Closing it quits; the key works without it.</summary>
+/// <summary>Picks the app the Copilot key opens. Closing it quits; the key is handled by the resident instance.</summary>
 public sealed partial class MainWindow : Window
 {
+    private const string StartupTaskId = "FlowKeyStartup";
+
     private bool _loading = true;
+    private bool _startupLoading;
 
     public MainWindow()
     {
@@ -28,8 +31,47 @@ public sealed partial class MainWindow : Window
         ShowTarget(Launcher.Target);
         ShowKeyRegistration();
         ShowLog();
+        _ = LoadStartupStateAsync();
+        _ = EnsureResidentAsync();
         // Listing the Start menu takes a moment; let the window paint first.
         DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, LoadApps);
+    }
+
+    // The quick path needs the background instance; start it if it isn't running (e.g. right after installing).
+    private static async Task EnsureResidentAsync()
+    {
+        if (Microsoft.Windows.AppLifecycle.AppInstance.GetInstances().Any(i => i.Key == "flowkey-resident")) return;
+        await Windows.System.Launcher.LaunchUriAsync(new Uri("flowkey://?state=Resident"));
+    }
+
+    private async Task LoadStartupStateAsync()
+    {
+        try
+        {
+            var task = await StartupTask.GetAsync(StartupTaskId);
+            _startupLoading = true;
+            StartupSwitch.IsOn = task.State is StartupTaskState.Enabled or StartupTaskState.EnabledByPolicy;
+            StartupSwitch.IsEnabled = task.State is not (StartupTaskState.DisabledByPolicy or StartupTaskState.EnabledByPolicy);
+        }
+        catch (Exception)
+        {
+            StartupSwitch.IsEnabled = false;
+        }
+        finally
+        {
+            _startupLoading = false;
+        }
+    }
+
+    private async void StartupSwitch_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_startupLoading) return;
+        var task = await StartupTask.GetAsync(StartupTaskId);
+        if (StartupSwitch.IsOn)
+            await task.RequestEnableAsync();
+        else
+            task.Disable();
+        await LoadStartupStateAsync();
     }
 
     /// <summary>Shows the window and brings it to the front.</summary>
@@ -72,7 +114,8 @@ public sealed partial class MainWindow : Window
 
     private void AppBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_loading || AppBox.SelectedItem is not ComboBoxItem { Tag: LaunchTarget target }) return;
+        if (_loading || AppBox.SelectedItem is not ComboBoxItem { Tag: LaunchTarget choice }) return;
+        var target = Launcher.WithExePath(choice);
         Launcher.Target = target;
         Log.Write($"the Copilot key now opens {target.Name} ({target.AppId})");
         ShowTarget(target);

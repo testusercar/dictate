@@ -44,7 +44,7 @@
                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                         <StackPanel Grid.Column="1" Spacing="2">
                             <TextBlock x:Name="StatusText" Text="No app chosen" Style="{StaticResource SubtitleTextBlockStyle}" />
-                            <TextBlock Text="Press the Copilot key to open the app you choose here, or bring it back if it's already open. Nothing else shows up in between: the launcher starts, opens the app and exits."
+                            <TextBlock Text="Press the Copilot key to open the app you choose here, or bring it back if it's already open. Nothing else shows up in between: an invisible launcher in the background acts the moment the key goes down."
                                        Style="{StaticResource BodyTextBlockStyle}" TextWrapping="Wrap"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         </StackPanel>
@@ -88,6 +88,14 @@
 
                 <!-- General -->
                 <TextBlock Text="General" Margin="1,24,0,6" Style="{StaticResource BodyStrongTextBlockStyle}" />
+
+                <tk:SettingsCard Header="Start with Windows"
+                                 Description="Keeps a small, invisible launcher running from sign-in so the Copilot key opens the app straight away. Without it, the first press after sign-in takes longer.">
+                    <tk:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE7E8;" />
+                    </tk:SettingsCard.HeaderIcon>
+                    <ToggleSwitch x:Name="StartupSwitch" Toggled="StartupSwitch_Toggled" />
+                </tk:SettingsCard>
 
                 <tk:SettingsExpander x:Name="DiagnosticsExpander" Header="Diagnostics"
                                      Description="Each Copilot key press, what it opened and how long that took.">

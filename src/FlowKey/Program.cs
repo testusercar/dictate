@@ -6,9 +6,13 @@ using Microsoft.Windows.AppLifecycle;
 namespace FlowKey;
 
 /// <summary>
-/// Custom entry point. A Copilot key press arrives as a flowkey:// launch: it opens the chosen app
-/// and exits before any XAML or window exists, so nothing flashes up in between. Any other launch
-/// (from Start) opens the settings window, in one instance.
+/// Custom entry point, with no XAML on the key's path so nothing ever flashes up:
+/// <list type="bullet">
+/// <item>A flowkey:// launch (a Copilot key press while nothing was running) opens the chosen app
+/// at once, then stays on as the resident instance so the next press is quick.</item>
+/// <item>Sign-in (the startup task) starts the resident instance.</item>
+/// <item>Any other launch (from Start) opens the settings window, in one instance.</item>
+/// </list>
 /// </summary>
 public static class Program
 {
@@ -18,9 +22,12 @@ public static class Program
         WinRT.ComWrappersSupport.InitializeComWrappers();
 
         var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
-        if (activation.Kind is ExtendedActivationKind.Protocol or ExtendedActivationKind.ProtocolForResults)
+        if (activation.Kind is ExtendedActivationKind.Protocol or ExtendedActivationKind.ProtocolForResults
+            or ExtendedActivationKind.StartupTask)
         {
-            Launcher.HandleKey(activation);
+            var resident = AppInstance.FindOrRegisterForKey("flowkey-resident");
+            if (activation.Kind != ExtendedActivationKind.StartupTask) Launcher.HandleKey(activation);
+            if (resident.IsCurrent) Resident.Run();
             return 0;
         }
 
